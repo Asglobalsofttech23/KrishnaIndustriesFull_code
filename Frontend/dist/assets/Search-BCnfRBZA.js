@@ -1,1 +1,0 @@
-import{j as t,R as i}from"./index-CxJtQRLb.js";const d=({data:r,setData:a})=>{const s=o=>{const n=o.target.value.toLowerCase(),c=r.filter(l=>Object.values(l).some(e=>e&&e.toString().toLowerCase().includes(n)));a(c)};return t.jsx("div",{children:t.jsx(i,{label:"Search",onChange:s})})};export{d as S};
