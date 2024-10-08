@@ -22,33 +22,23 @@ const getRandomColor = () => {
   return color;
 };
 
-// Utility function to generate gradient colors for each data point
-const generateGradientColors = (numColors) => {
-  const colors = [];
-  for (let i = 0; i < numColors; i++) {
-    colors.push(getRandomColor());
-  }
-  return colors;
-};
-
 // ==============================|| DASHBOARD DEFAULT - TOTAL GROWTH BAR CHART ||============================== //
 
 const CustPurchChart = ({ isLoading }) => {
   const theme = useTheme();
   const [cityData, setCityData] = useState([]);
-  const [selectedCity, setSelectedCity] = useState('');
-  useEffect(() => {
-    axios
-      .get(`${config.apiUrl}/customer/getCustomer`)
-      .then((res) => {
-        setCityData(res.data);
-      })
-      .catch((err) => {
-        console.log('City data is not fetched.');
-      });
-  }, []);
+  const [selectedCity, setSelectedCity] = useState(''); // Default to empty string for all cities
   const [chartData, setChartData] = useState({
-    series: [],
+    series: [
+      {
+        name: 'Total Price',
+        data: []
+      },
+      {
+        name: 'Total Quantity',
+        data: []
+      }
+    ],
     options: {
       chart: {
         type: 'bar',
@@ -57,7 +47,7 @@ const CustPurchChart = ({ isLoading }) => {
       plotOptions: {
         bar: {
           horizontal: false,
-          columnWidth: '55%',
+          columnWidth: '60%',
           endingShape: 'rounded'
         }
       },
@@ -74,7 +64,7 @@ const CustPurchChart = ({ isLoading }) => {
       },
       yaxis: {
         title: {
-          text: 'Total Sales'
+          text: 'Values'
         }
       },
       fill: {
@@ -92,7 +82,7 @@ const CustPurchChart = ({ isLoading }) => {
       tooltip: {
         y: {
           formatter: function (val) {
-            return  val + ' sales';
+            return val;
           }
         }
       }
@@ -100,74 +90,80 @@ const CustPurchChart = ({ isLoading }) => {
   });
 
   useEffect(() => {
+    // Fetching city data
     axios
-      .get(`${config.apiUrl}/product/dashboardForProSale/${selectedCity}`)
+      .get(`${config.apiUrl}/customer/getCustomer`)
+      .then((res) => {
+        setCityData(res.data);
+      })
+      .catch((err) => {
+        console.log('City data is not fetched.');
+      });
+  }, []);
+
+  useEffect(() => {
+    // Fetching product sales data based on selected city
+    const endpoint = selectedCity
+      ? `${config.apiUrl}/product/dashboardForProSale/${selectedCity}`
+      : `${config.apiUrl}/product/dashboardForProSale`;
+
+    axios
+      .get(endpoint)
       .then((response) => {
-        const salesByProduct = response.data.salesByProduct;
+        const salesByProduct = response.data; // Adjusted according to the structure you provided
 
-        const dynamicColors = generateGradientColors(salesByProduct.length);
+        const categories = salesByProduct.map((item) => item.pro_name);
+        const prices = salesByProduct.map((item) => parseFloat(item.total_price));
+        const quantities = salesByProduct.map((item) => parseFloat(item.total_quantity));
 
-        console.log('Chart Response :', response);
-
-        setChartData((prevState) => ({
-          ...prevState,
+        setChartData({
           series: [
             {
-              name: 'Total Sales',
-              data: salesByProduct.map((item) => item.totalSales)
+              name: 'Total Price',
+              data: prices
+            },
+            {
+              name: 'Total Quantity',
+              data: quantities
             }
           ],
           options: {
-            ...prevState.options,
+            ...chartData.options,
             xaxis: {
-              categories: salesByProduct.map((item) => item.pro_name)
-            },
-            fill: {
-              type: 'gradient',
-              gradient: {
-                shade: 'light',
-                type: 'horizontal',
-                shadeIntensity: 0.25,
-                gradientToColors: dynamicColors,
-                inverseColors: true,
-                opacityFrom: 0.85,
-                opacityTo: 0.85,
-                stops: [0, 50, 100]
-              }
+              categories: categories
             }
           }
-        }));
+        });
       })
       .catch((error) => {
         console.error('Error fetching dashboard data:', error);
       });
   }, [selectedCity]);
 
-  console.log('Selected City :', selectedCity);
-
   return (
     <div>
-      {isLoading ? (<>
-        <Typography variant="h6">Loading...</Typography>
-        <h3 style={{ textAlign: 'center' ,color: theme.palette.primary.main }}>SALES</h3>
-      </> 
+      {isLoading ? (
+        <>
+          <Typography variant="h6">Loading...</Typography>
+          <h3 style={{ textAlign: 'center', color: theme.palette.primary.main }}>SALES</h3>
+        </>
       ) : (
         <MainCard>
-          <h1 style={{ textAlign: 'center' ,color: theme.palette.primary.main }}>SALES</h1>
+          <h3 style={{ textAlign: 'center', color: theme.palette.primary.main }}>SALES</h3>
           <Grid container spacing={3}>
             <Grid item xs={4} display="flex" justifyContent="start">
-              <TextField select fullWidth label="select city" value={selectedCity} onChange={(e) => setSelectedCity(e.target.value)}>
+              <TextField select fullWidth label="Select City" value={selectedCity} onChange={(e) => setSelectedCity(e.target.value)}>
                 <MenuItem value="">Select All</MenuItem>
                 {cityData.map((city) => (
-                  <MenuItem key={city.cust_id} value={city.cust_city}>
-                    {city.cust_city}
+                  <MenuItem key={city.leads_id} value={city.leads_city}>
+                    {city.leads_city}
                   </MenuItem>
                 ))}
               </TextField>
             </Grid>
           </Grid>
 
-          <Chart options={chartData.options} series={chartData.series} type="bar" height={350} />
+          <Chart options={chartData.options} series={chartData.series} type="bar" height={450} />
         </MainCard>
       )}
     </div>

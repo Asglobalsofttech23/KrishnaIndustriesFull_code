@@ -1,12 +1,13 @@
 // assets
-import { IconTypography, IconPalette, IconShadow, IconWindmill } from '@tabler/icons-react';
+import { IconTypography, IconShoppingCart, IconPalette, IconShadow, IconWindmill } from '@tabler/icons-react';
 
 // constant
 const icons = {
   IconTypography,
   IconPalette,
   IconShadow,
-  IconWindmill
+  IconWindmill,
+  IconShoppingCart
 };
 
 // ==============================|| UTILITIES MENU ITEMS ||============================== //
@@ -21,7 +22,7 @@ const admin_purch = {
       title: 'Purchase Index',
       type: 'item',
       url: '/purchIndex',
-      icon: icons.IconTypography,
+      icon: icons.IconShoppingCart,
       breadcrumbs: false
     }
   ]

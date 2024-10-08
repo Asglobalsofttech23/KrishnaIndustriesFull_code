@@ -1,12 +1,14 @@
 // assets
-import { IconTypography, IconPalette, IconShadow, IconWindmill } from '@tabler/icons-react';
+import { IconTypography, IconUserDollar, IconUsers, IconPalette, IconShadow, IconWindmill } from '@tabler/icons-react';
 
 // constant
 const icons = {
   IconTypography,
   IconPalette,
   IconShadow,
-  IconWindmill
+  IconWindmill,
+  IconUsers,
+  IconUserDollar
 };
 
 // ==============================|| UTILITIES MENU ITEMS ||============================== //
@@ -21,7 +23,7 @@ const emp_cust = {
       title: 'Customer Index',
       type: 'item',
       url: '/custIndex',
-      icon: icons.IconTypography,
+      icon: icons.IconUsers,
       breadcrumbs: false
     },
     {
@@ -29,7 +31,7 @@ const emp_cust = {
       title: 'Customer Purchase',
       type: 'item',
       url: '/custPurchIndex',
-      icon: icons.IconTypography,
+      icon: icons.IconUserDollar,
       breadcrumbs: false
     }
   ]

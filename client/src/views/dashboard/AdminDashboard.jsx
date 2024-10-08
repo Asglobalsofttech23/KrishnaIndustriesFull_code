@@ -23,7 +23,7 @@ const AdminDashboard = () => {
   return (
     <Grid container spacing={gridSpacing}>
       <Grid item xs={12}>
-        <Grid container spacing={gridSpacing}>
+        <Grid container spacing={gridSpacing} marginTop={'1px'}>
           <Grid item lg={4} md={6} sm={6} xs={12}>
             <EmployeeCard isLoading={isLoading} />
           </Grid>
@@ -41,11 +41,11 @@ const AdminDashboard = () => {
                     isLoading: isLoading,
                     total: 203,
                     label: 'Total Income',
-                    icon: <StorefrontTwoToneIcon fontSize="inherit" />,
+                    icon: <StorefrontTwoToneIcon fontSize="inherit" />
                   }}
                 />
               </Grid>
-              <Grid item  sm={12} xs={6}>
+              <Grid item sm={12} xs={6}>
                 <PurchaseStatus isLoading={isLoading} />
               </Grid>
             </Grid>
@@ -55,8 +55,8 @@ const AdminDashboard = () => {
       <Grid item xs={12}>
         <Grid container spacing={gridSpacing}>
           <Grid item lg={8} md={12} xs={12}>
-            <Grid container spacing={gridSpacing}>
-              <Grid item xs={12}>
+            <Grid container>
+              <Grid item xs={12} marginTop={'-100px'}>
                 <ProductSalesChart isLoading={isLoading} />
               </Grid>
               <Grid item xs={12}>

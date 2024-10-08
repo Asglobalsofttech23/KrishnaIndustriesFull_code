@@ -1,63 +1,99 @@
+/* CustomerCard.css */
+
+@keyframes gradientAnimation {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
 .cust-card {
-    width: 350px;
-    height: 120px;
-    padding: 0.5rem;
-    background: #1E88E5;
-    border-radius: 8px;
-    backdrop-filter: blur(5px);
-    border-bottom: 3px solid rgba(255, 255, 255, 0.440);
-    border-left: 2px  rgba(255, 255, 255, 0.545) outset;
-    box-shadow: -40px 50px 30px rgba(0, 0, 0, 0.280);
-    transform: skewX(10deg);
-    transition: .4s;
-    overflow: hidden;
-    color: white;
-  }
-  
-  .cust-card:hover {
-    height: 168px;
-    transform: skew(0deg);
-  }
-  
-  .cust-card h3 {
-    text-align: center;
-    margin: 1.3rem;
-    color: rgb(218, 244, 237);
-    text-shadow: -10px 5px 10px rgba(0, 0, 0, 0.573);
-  }
-  
-  .cust-card-heading {
-    font-size: 2rem;
-    font-weight: bold;
-    color: whitesmoke;
-  }
-  
-  .cust-value {
-    text-align: center;
-    margin: 0.5rem;
-    font-size: 3rem;
-  }
-  
-  .icon-container {
-    display: flex;
-    justify-content: center;
-  }
-  
-  .cust-icon {
-    font-size: 2.5rem;
-  }
- 
-@media (max-width: 600px) {
-  .MuiAvatar-root {
-    width: 20px;
-    height: 20px;
-  }
+  background: linear-gradient(45deg, #3f87a6, #ebf8e1);
+  background-size: 300% 300%;
+  animation: gradientAnimation 10s ease infinite;
+  border-radius: 15px;
+  padding: 20px;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+}
 
-  .MuiTypography-subtitle1 {
-    font-size: 0.875rem;
-  }
+.cust-card:hover {
+  transform: translateY(-5px) scale(1.02);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+}
 
-  .MuiTypography-subtitle2 {
-    font-size: 0.75rem;
+.cust-card-heading {
+  font-weight: bold;
+  color: #ffffff;
+}
+
+.cust-value {
+  font-weight: bold;
+  color: #ffffff;
+  margin-top: 10px;
+  text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.5);
+}
+
+.icon-container {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.cust-icon {
+  font-size: 50px;
+  color: #ffffff;
+  transition: transform 0.3s;
+}
+
+.cust-icon:hover {
+  transform: scale(1.1);
+}
+
+/* New styles for loading effect */
+.loading-container {
+  display: flex;
+  align-items: center;
+  margin-top: 10px; /* Spacing above */
+}
+
+.loading-spinner {
+  color: #ffffff; /* Change spinner color */
+  animation: pulse 1.5s infinite; /* Pulsing effect */
+  margin-right: 10px; /* Spacing between spinner and text */
+}
+
+.loading-text {
+  color: #ffffff; /* White color for loading text */
+  animation: fade-in-out 1s infinite; /* Fade effect */
+}
+
+/* Keyframe animation for fade in and out */
+@keyframes fade-in-out {
+  0% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
   }
 }

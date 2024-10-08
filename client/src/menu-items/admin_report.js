@@ -1,11 +1,14 @@
-import { IconTypography, IconPalette, IconShadow, IconWindmill } from '@tabler/icons-react';
+import { IconTypography, IconReportMedical, IconReportMoney, IconPalette, IconShadow, IconWindmill, IconCheckupList } from '@tabler/icons-react';
 
 // constant
 const icons = {
   IconTypography,
   IconPalette,
   IconShadow,
-  IconWindmill
+  IconWindmill,
+  IconReportMoney,
+  IconReportMedical,
+  IconCheckupList
 };
 
 // ==============================|| UTILITIES MENU ITEMS ||============================== //
@@ -15,13 +18,13 @@ const admin_reports = {
   title: 'Reports',
   type: 'group',
   children: [
-    
+
     {
       id: 'admin-purreport',
       title: 'purchase Report',
       type: 'item',
       url: '/purreports',
-      icon: icons.IconTypography,
+      icon: icons.IconReportMedical,
       breadcrumbs: false
     },
     {
@@ -29,26 +32,19 @@ const admin_reports = {
       title: 'Sales Report',
       type: 'item',
       url: '/salesreports',
-      icon: icons.IconTypography,
+      icon: icons.IconReportMoney,
       breadcrumbs: false
     },
-    // {
-    //   id: 'admin-proreport',
-    //   title: 'Profit Report',
-    //   type: 'item',
-    //   url: '/profitreports',
-    //   icon: icons.IconTypography,
-    //   breadcrumbs: false
-    // },
+
     {
-        id: 'admin-empreport',
-        title: 'Employees attendance',
-        type: 'item',
-        url: 'empAttendancereports',
-        icon: icons.IconTypography,
-        breadcrumbs: false
-      },
-    
+      id: 'admin-empreport',
+      title: 'Employees attendance',
+      type: 'item',
+      url: 'empAttendancereports',
+      icon: icons.IconCheckupList,
+      breadcrumbs: false
+    },
+
   ]
 };
 

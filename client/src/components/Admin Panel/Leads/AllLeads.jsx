@@ -1,6 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { TextField, Button, MenuItem, Select, InputLabel, FormControl, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, TablePagination, Card, CardContent, Typography, Grid } from '@mui/material';
+import {
+  TextField,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  TablePagination,
+  CircularProgress,
+  Grid,
+  Card,
+  CardContent,
+  Typography,
+  Button
+} from '@mui/material';
+import { utils, writeFile } from 'xlsx';
 import config from '../../../config';
 
 // Utility function to format date
@@ -51,41 +72,44 @@ const LeadsList = () => {
     fetchLeadsAndFollowing();
   }, []);
 
+  // Automatically apply filter when date or month changes
+  useEffect(() => {
+    let filtered = Array.isArray(leads) ? [...leads] : [];
+
+    if (selectedDate) {
+      filtered = filtered.filter((lead) => new Date(lead.QUERY_TIME).toDateString() === new Date(selectedDate).toDateString());
+    } else if (selectedMonth) {
+      const [year, month] = selectedMonth.split('-');
+      filtered = filtered.filter((lead) => {
+        const leadDate = new Date(lead.QUERY_TIME);
+        return leadDate.getFullYear() === parseInt(year) && leadDate.getMonth() + 1 === parseInt(month);
+      });
+    }
+
+    setFilteredLeads(filtered);
+    setPage(0); // Reset pagination to the first page when filtering
+  }, [selectedDate, selectedMonth, leads]);
+
+  // Handle date selection
   const handleDateChange = (e) => {
     setSelectedDate(e.target.value);
     setSelectedMonth(''); // Clear month selection when date is selected
   };
 
+  // Handle month selection
   const handleMonthChange = (e) => {
     setSelectedMonth(e.target.value);
     setSelectedDate(''); // Clear date selection when month is selected
   };
 
-  const applyFilter = () => {
-    let filtered = Array.isArray(leads) ? [...leads] : [];
-
-    if (selectedDate) {
-      filtered = filtered.filter(lead => new Date(lead.QUERY_TIME).toDateString() === new Date(selectedDate).toDateString());
-    } else if (selectedMonth) {
-      const [year, month] = selectedMonth.split('-');
-      filtered = filtered.filter(lead => {
-        const leadDate = new Date(lead.QUERY_TIME);
-        return leadDate.getFullYear() === parseInt(year) && (leadDate.getMonth() + 1) === parseInt(month);
-      });
-    }
-
-    setFilteredLeads(filtered);
-    setPage(0); // Reset to the first page when filtering
-  };
-
-  // Handle pagination
+  // Pagination handlers
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
   };
 
   const handleChangeRowsPerPage = (event) => {
     setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0); // Reset to the first page when changing rows per page
+    setPage(0); // Reset pagination to first page when changing rows per page
   };
 
   // Calculate paginated data
@@ -93,12 +117,69 @@ const LeadsList = () => {
 
   // Match leads with followingLeads
   const getRowStyle = (leadId) => {
-    return followingLeads.some(follow => follow.leads_id === leadId) ? { backgroundColor: 'lightgreen' } : {};
+    return followingLeads.some((follow) => follow.leads_id === leadId) ? { backgroundColor: 'lightgreen' } : {};
+  };
+
+  // Export leads data to Excel
+  const exportToExcel = async () => {
+    setLoading(true);
+
+    try {
+      // Build query parameters based on filters
+      const params = new URLSearchParams();
+      if (selectedDate) {
+        params.append('selectedDate', selectedDate);
+      } else if (selectedMonth) {
+        params.append('selectedMonth', selectedMonth);
+      }
+
+      // Call the API with the appropriate filters
+      const response = await axios.get(`${config.apiUrl}/leads/api/leads-data?${params.toString()}`);
+      const leadsData = response.data;
+
+      // Format the data for Excel export
+      const formattedData = leadsData.map((lead) => ({
+        'Query ID': lead.UNIQUE_QUERY_ID,
+        'Query Type': lead.QUERY_TYPE,
+        'Query Time': lead.QUERY_TIME,
+        'Sender Name': lead.SENDER_NAME,
+        'Sender Mobile': lead.SENDER_MOBILE,
+        'Sender Email': lead.SENDER_EMAIL,
+        Subject: lead.SUBJECT,
+        Company: lead.SENDER_COMPANY,
+        Address: lead.SENDER_ADDRESS,
+        City: lead.SENDER_CITY,
+        State: lead.SENDER_STATE,
+        Pincode: lead.SENDER_PINCODE,
+        'Country ISO': lead.SENDER_COUNTRY_ISO,
+        'Alt Mobile': lead.SENDER_MOBILE_ALT,
+        Phone: lead.SENDER_PHONE,
+        'Alt Phone': lead.SENDER_PHONE_ALT,
+        'Alt Email': lead.SENDER_EMAIL_ALT,
+        'Product Name': lead.QUERY_PRODUCT_NAME,
+        Message: lead.QUERY_MESSAGE,
+        'MCAT Name': lead.QUERY_MCAT_NAME,
+        'Call Duration': lead.CALL_DURATION,
+        'Receiver Mobile': lead.RECEIVER_MOBILE
+      }));
+
+      // Generate Excel file
+      const worksheet = utils.json_to_sheet(formattedData);
+      const workbook = utils.book_new();
+      utils.book_append_sheet(workbook, worksheet, 'Leads Data');
+
+      // Trigger the file download
+      writeFile(workbook, 'LeadsData.xlsx');
+    } catch (error) {
+      console.error('Error exporting leads data to Excel:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div style={{ padding: '20px' }}>
-      <h1>Leads</h1>
+      <h1>All Leads</h1>
       <Grid container spacing={3} style={{ marginBottom: '20px' }}>
         <Grid item xs={12} sm={6} md={4}>
           <Card>
@@ -125,6 +206,7 @@ const LeadsList = () => {
           </Card>
         </Grid>
       </Grid>
+
       <div style={{ marginBottom: '20px' }}>
         <TextField
           type="date"
@@ -136,11 +218,7 @@ const LeadsList = () => {
         />
         <FormControl style={{ marginRight: '10px', minWidth: 120 }}>
           <InputLabel>Month</InputLabel>
-          <Select
-            value={selectedMonth}
-            onChange={handleMonthChange}
-            label="Month"
-          >
+          <Select value={selectedMonth} onChange={handleMonthChange} label="Month">
             <MenuItem value="">None</MenuItem>
             {/* Generate options for the current year */}
             {Array.from({ length: 12 }).map((_, i) => (
@@ -150,16 +228,41 @@ const LeadsList = () => {
             ))}
           </Select>
         </FormControl>
+        {selectedDate ||
+          (selectedMonth && (
+            <Button
+              variant="contained"
+              color={selectedDate || selectedMonth ? 'secondary' : 'primary'}
+              onClick={() => {
+                if (selectedDate || selectedMonth) {
+                  // Reset date and month selections
+                  setSelectedDate('');
+                  setSelectedMonth('');
+                  // Reset the filtered leads to show all leads
+                  setFilteredLeads(leads);
+                } else {
+                  // You can leave this empty or handle other filter-related functionality here
+                  // The filtering happens automatically when a date or month is selected
+                }
+              }}
+            >
+              {selectedDate || selectedMonth ? 'Cancel' : 'Filter'}
+            </Button>
+          ))}
+
         <Button
           variant="contained"
-          color="primary"
-          onClick={applyFilter}
+          color="secondary"
+          onClick={exportToExcel}
+          disabled={loading}
+          startIcon={loading && <CircularProgress size={20} />}
         >
-          Filter
+          {loading ? 'Exporting...' : 'Export Excel'}
         </Button>
       </div>
+
       {loading ? (
-        <p>Loading...</p>
+        <CircularProgress />
       ) : (
         <>
           <TableContainer component={Paper}>
@@ -181,9 +284,9 @@ const LeadsList = () => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {paginatedLeads.length > 0 ? (
-                  paginatedLeads.map((lead, index) => (
-                    <TableRow key={lead.UNIQUE_QUERY_ID} style={getRowStyle(lead.UNIQUE_QUERY_ID)}>
+                {filteredLeads.length > 0 ? (
+                  filteredLeads.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((lead, index) => (
+                    <TableRow key={lead.UNIQUE_QUERY_ID}>
                       <TableCell>{page * rowsPerPage + index + 1}</TableCell>
                       <TableCell>{lead.UNIQUE_QUERY_ID}</TableCell>
                       <TableCell>{formatDate(lead.QUERY_TIME)}</TableCell>
@@ -205,6 +308,7 @@ const LeadsList = () => {
               </TableBody>
             </Table>
           </TableContainer>
+
           <TablePagination
             rowsPerPageOptions={[10, 25, 50]}
             component="div"

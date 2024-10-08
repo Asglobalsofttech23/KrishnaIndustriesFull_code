@@ -1,49 +1,68 @@
-.emp-card {
-    width: 350px;
-    height: 120px;
-    padding: 0.5rem;
-    background: #1E88E5;
-    border-radius: 8px;
-    backdrop-filter: blur(5px);
-    border-bottom: 3px solid rgba(255, 255, 255, 0.440);
-    border-left: 2px  rgba(255, 255, 255, 0.545) outset;
-    box-shadow: -40px 50px 30px rgba(0, 0, 0, 0.280);
-    transform: skewX(10deg);
-    transition: .4s;
-    overflow: hidden;
-    color: white;
+@keyframes gradientAnimation {
+  0% {
+    background-position: 0% 50%;
   }
-  
-  .emp-card:hover {
-    height: 168px;
-    transform: skew(0deg);
+  50% {
+    background-position: 100% 50%;
   }
-  
-  .emp-card h3 {
-    text-align: center;
-    margin: 1.3rem;
-    color: rgb(218, 244, 237);
-    text-shadow: -10px 5px 10px rgba(0, 0, 0, 0.573);
+  100% {
+    background-position: 0% 50%;
   }
-  
-  .emp-card-heading {
-    font-size: 2rem;
-    font-weight: bold;
-    color: whitesmoke;
-  }
-  
-  .emp-value {
-    text-align: center;
-    margin: 0.5rem;
-    font-size: 3rem;
-  }
-  
-  .icon-container {
-    display: flex;
-    justify-content: center;
-  }
-  
-  .emp-icon {
-    font-size: 2.5rem;
-  }
-  
+}
+
+.styled-emp-card {
+  background: linear-gradient(270deg, #f0f4ff, #a7c6ed, #f0f4ff); /* Gradient colors */
+  background-size: 300% 300%; /* Allow for smooth animation */
+  animation: gradientAnimation 8s ease infinite; /* Animation duration and effect */
+  border-radius: 15px; /* Rounded corners */
+  padding: 20px;
+  transition: transform 0.3s ease;
+}
+
+.styled-emp-card:hover {
+  transform: translateY(-5px); /* Lift effect on hover */
+}
+
+.styled-emp-card-heading {
+  font-weight: bold;
+  color: #3f51b5; /* Primary color */
+}
+
+.styled-emp-value {
+  font-weight: bold;
+  color: #000; /* Text color */
+  margin-top: 10px; /* Spacing above */
+}
+
+.icon-container {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.styled-emp-icon {
+  font-size: 50px; /* Icon size */
+  color: #3f51b5; /* Icon color */
+  transition: transform 0.2s; /* Transition effect */
+}
+
+.styled-emp-icon:hover {
+  transform: scale(1.1); /* Scale effect on hover */
+}
+
+/* Updated styles for loading effect */
+.loading-container {
+  display: flex;
+  align-items: center;
+  margin-top: 10px; /* Spacing above */
+}
+
+.loading-spinner {
+  color: #3f51b5; /* Match spinner color with primary theme */
+  margin-right: 10px; /* Spacing between spinner and text */
+}
+
+.loading-text {
+  color: #3f51b5; /* Match text color with primary theme */
+  font-weight: 500;
+}

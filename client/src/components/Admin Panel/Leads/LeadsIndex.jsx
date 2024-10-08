@@ -1,5 +1,7 @@
 import {
+  Alert,
   Button,
+  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -9,21 +11,45 @@ import {
   MenuItem,
   Paper,
   Select,
+  Snackbar,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
-  TableRow,
-} from "@mui/material";
-import axios from "axios";
-import moment from "moment";
-import React, { useEffect, useState } from "react";
+  TableRow
+} from '@mui/material';
+import axios from 'axios';
+import moment from 'moment';
+import React, { useEffect, useState } from 'react';
 import Pagination from '@mui/material/Pagination';
 import Stack from '@mui/material/Stack';
-import Search from "../../Search Option/Search";
-import AdminLeadsFilterForm from "./AdminLeadsFilterForm";
-import config from '../../../config'
+import Search from '../../Search Option/Search';
+import config from '../../../config';
+
+import { makeStyles } from '@mui/styles';
+import AddFollowingLeads from 'components/Employee Panel/Following Leads/AddFollowingLeads';
+
+const useStyles = makeStyles((theme) => ({
+  tableContainer: {
+    maxHeight: '600px'
+  },
+  stickyAction: {
+    position: 'sticky',
+    right: 0,
+    justifyItems: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    zIndex: 1
+  },
+  actionColumnHeader: {
+    position: 'sticky',
+    right: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 2
+  }
+}));
 
 const formatDate = (dateStr) => {
   const date = new Date(dateStr);
@@ -35,236 +61,235 @@ const formatDate = (dateStr) => {
   const minutes = date.getMinutes().toString().padStart(2, '0');
   const ampm = hours >= 12 ? 'PM' : 'AM';
   hours = hours % 12;
-  hours = hours ? hours : 12; // the hour '0' should be '12'
+  hours = hours ? hours : 12;
   const formattedHours = hours.toString().padStart(2, '0');
 
   return `${day}/${month}/${year} ${formattedHours}:${minutes} ${ampm}`;
 };
 
 const LeadsIndex = () => {
-  const yesterday = moment().subtract(1, "days").format("YYYY-MM-DD");
-  const today = moment().format("YYYY-MM-DD");
+  const classes = useStyles();
   const [leadsData, setLeadsData] = useState([]);
-  const [openError, setOpenError] = useState(false);
-  const [errorMsg, setErrorMsg] = useState("");
-  const [searchedFilter, setSearchedFilter] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarSeverity, setSnackbarSeverity] = useState('success');
   const [dataPerPage, setDataPerPage] = useState(5);
   const [currentPage, setCurrentPage] = useState(1);
-  const [startTime, setStartTime] = useState(
-    moment(`${yesterday} 22:00:00`).format("YYYY-MM-DD HH:mm:ss")
-  );
-  const [endTime, setEndTime] = useState(
-    moment().format("YYYY-MM-DD HH:mm:ss")
-  );
-  const [filterLeadsData, setFilterLeadsData] = useState(false);
-  const [todayLeadsData, setTodayLeadsData] = useState(false);
+  const [searchedFilter, setSearchedFilter] = useState([]);
+  const [openFollowForm, setOpenFollowForm] = useState(false);
+  const [followData, setFollowData] = useState();
+
+  const [showTodayLeads, setShowTodayLeads] = useState(true); // Toggle for showing today's leads
 
   useEffect(() => {
-    if (todayLeadsData) {
-      fetchLeadsData(startTime, endTime);
-    }
-  }, [startTime, endTime, todayLeadsData]);
-
-  useEffect(() => {
-    if (!filterLeadsData) {
-      const storedData = sessionStorage.getItem("leadsData");
-      if (storedData) {
-        setLeadsData(JSON.parse(storedData));
-        setSearchedFilter(JSON.parse(storedData));
-      }
-    }
-  }, [filterLeadsData]);
-
-  useEffect(() => {
-    axios
-      .get(`${config.apiUrl}/leads/getFollowingLeadsMobile`)
-      .then((res) => {
-        // Assuming you may still need this data for other purposes
-      })
-      .catch((err) => {
-        console.log("Error Following Data Can't be fetched.");
-      });
+    setLoading(true);
+    fetchLeadsData(); // Fetch leads data on mount
   }, []);
 
-  useEffect(() => {
-    axios.get(`${config.apiUrl}/customer/getCustomer`)
-      .then((res) => {
-        // Assuming you may still need this data for other purposes
-      })
-      .catch((err) => {
-        console.log("Error Customer Data Can't be fetched.");
-      });
-  }, []);
-
-  const fetchLeadsData = (startTime, endTime) => {
+  const fetchLeadsData = () => {
     axios
-      .get(`${config.apiUrl}/leads/leadsData/?startTime=${startTime}&endTime=${endTime}`)
+      .get(`${config.apiUrl}/leads/getleads`)
       .then((res) => {
-        if (res.data.data.RESPONSE.length > 0) {
-          sessionStorage.setItem("leadsData", JSON.stringify(res.data.data.RESPONSE));
-          setLeadsData(res.data.data.RESPONSE);
-          setSearchedFilter(res.data.data.RESPONSE);
+        if (res.data.data.length > 0) {
+          setLeadsData(res.data.data);
+          setSearchedFilter(res.data.data); // Show all leads initially
         }
+        setLoading(false);
       })
       .catch((err) => {
-        setOpenError(true);
-        setErrorMsg(
-          err.response?.data?.message || "An error occurred while fetching leads data"
-        );
-        console.error("Error:", err);
+        setSnackbarMessage('An error occurred while fetching leads data.');
+        setSnackbarOpen(true);
+        setLoading(false);
       });
   };
 
-  const handleFilterChange = (selectedState, selectedCity, startDate, endDate) => {
-    let filteredData = leadsData;
-    if (selectedState) {
-      filteredData = filteredData.filter(lead => lead.SENDER_STATE === selectedState);
+  useEffect(() => {
+    if (leadsData.length > 0) {
+      // Filter to show today's leads by default
+      const today = moment().format('YYYY-MM-DD');
+      const todayLeads = leadsData.filter((lead) => moment(lead.QUERY_TIME).format('YYYY-MM-DD') === today);
+      setSearchedFilter(todayLeads); // Set initial filter to today's leads
     }
-    if (selectedCity) {
-      filteredData = filteredData.filter(lead => lead.SENDER_CITY === selectedCity);
-    }
-    if (startDate && endDate) {
-      filteredData = filteredData.filter(lead => {
-        const leadDate = moment(lead.CREATED_DATE);
-        return leadDate.isBetween(startDate, endDate);
-      });
-    }
-    setSearchedFilter(filteredData);
+  }, [leadsData]);
+
+  const handleCloseSnackbar = () => {
+    setSnackbarOpen(false);
   };
 
-  const handleCancelFilter = () => {
-    setFilterLeadsData(false);
-    setSearchedFilter(leadsData);
-  };
-
-  const handleChangeDataPerPage = (e) => {
-    const newDataPerPage = parseInt(e.target.value, 10);
-    if (newDataPerPage === 1) {
-      setDataPerPage(leadsData.length);
-      setCurrentPage(1);
+  const handleShowTodayLeads = () => {
+    if (showTodayLeads) {
+      setSearchedFilter(leadsData); // Show all leads
     } else {
-      setDataPerPage(newDataPerPage);
-      setCurrentPage(1);
+      const today = moment().format('YYYY-MM-DD');
+      const todayLeads = leadsData.filter((lead) => moment(lead.QUERY_TIME).format('YYYY-MM-DD') === today);
+      setSearchedFilter(todayLeads); // Show today's leads
     }
+    setShowTodayLeads(!showTodayLeads);
+    setCurrentPage(1); // Reset to the first page when toggling
   };
 
   const firstIndexOfData = (currentPage - 1) * dataPerPage;
   const lastIndexOfData = currentPage * dataPerPage;
   const currentData = searchedFilter.slice(firstIndexOfData, lastIndexOfData);
 
+  const handleFollow = (id) => {
+    if (leadsData.length > 0) {
+      const selectData = leadsData.find((leads) => leads.UNIQUE_QUERY_ID === id);
+      if (selectData) {
+        setFollowData(selectData);
+        setOpenFollowForm(true);
+      }
+    }
+  };
+
+  const handleFollowSuccess = () => {
+    setOpenFollowForm(false);
+    setSnackbarSeverity('success');
+    setSnackbarMessage('Lead followed successfully!');
+    setSnackbarOpen(true);
+  };
+
   return (
     <div>
-      {filterLeadsData && !todayLeadsData && (
-        <h1 className="text-center">Filtered Leads Index</h1>
-      )}
+      <h1 className="text-center">Leads Index</h1>
 
-      {!filterLeadsData && todayLeadsData && (
-        <h1 className="text-center">Today Leads</h1>
-      )}
-
-      {!filterLeadsData && !todayLeadsData && (
-        <h1 className="text-center">Leads Index</h1>
-      )}
-
-      {filterLeadsData ? (
-        <AdminLeadsFilterForm onFilterChange={handleFilterChange} />
-      ) : null}
-
-      <Grid container spacing={2}>
-        <Grid item xs={4} display="flex" justifyContent="center">
-          <Search data={leadsData} setData={setSearchedFilter} />
-        </Grid>
-        <Grid item xs={4} display="flex" justifyContent="center">
-          {filterLeadsData ? (
-            <Button
-              onClick={handleCancelFilter}
-              variant="contained"
-            >
-              Cancel Filter
-            </Button>
-          ) : (
-            <>
-              <Button
-                onClick={() => setFilterLeadsData(true)}
-                variant="contained"
-              >
-                Apply Filter
+      {loading ? (
+        <div style={{ textAlign: 'center', marginTop: '20px' }}>
+          <CircularProgress />
+          <p>Processing... Please wait.</p>
+        </div>
+      ) : (
+        <>
+          <Grid container spacing={2} alignItems="center">
+            <Grid item xs={3}>
+              <Search data={leadsData} setData={setSearchedFilter} />
+            </Grid>
+            <Grid item xs={3}>
+              <Button variant="contained" onClick={handleShowTodayLeads}>
+                {showTodayLeads ? 'Show All Leads' : "Show Today's Leads"}
               </Button>
-              <Button
-                onClick={() => setTodayLeadsData(true)}
-                style={{ marginLeft: "30px" }}
-                variant="contained"
-              >
-                Today Leads
-              </Button>
-            </>
-          )}
-        </Grid>
-        <Grid item xs={4} display="flex" justifyContent="center">
-          <FormControl>
-            <Select value={dataPerPage} onChange={handleChangeDataPerPage}>
-              <MenuItem value={5}>5 Per Page</MenuItem>
-              <MenuItem value={10}>10 Per Page</MenuItem>
-              <MenuItem value={15}>15 Per Page</MenuItem>
-              <MenuItem value={1}>All Per Page</MenuItem>
-            </Select>
-          </FormControl>
-        </Grid>
-      </Grid>
-      <TableContainer component={Paper} className="mt-3">
-        <Table>
-          <TableHead>
-            <TableRow style={{ fontWeight: "bold", backgroundColor: "#FFF9C4" }}>
-              <TableCell style={{ fontWeight: "bold" }}>S.No</TableCell>
-              <TableCell style={{ fontWeight: "bold" }}>Date</TableCell>
-              <TableCell style={{ fontWeight: "bold" }}>Name</TableCell>
-              <TableCell style={{ fontWeight: "bold" }}>Mobile Number</TableCell>
-              <TableCell style={{ fontWeight: "bold" }}>Email</TableCell>
-              <TableCell style={{ fontWeight: "bold" }}>Company</TableCell>
-              <TableCell style={{ fontWeight: "bold" }}>Address</TableCell>
-              <TableCell style={{ fontWeight: "bold" }}>City</TableCell>
-              <TableCell style={{ fontWeight: "bold" }}>State</TableCell>
-              <TableCell style={{ fontWeight: "bold" }}>Product Name</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {currentData.map((leads, index) => (
-              <TableRow key={leads.UNIQUE_QUERY_ID}>
-                <TableCell>{index + 1}</TableCell>
-                <TableCell>{formatDate(leads.QUERY_TIME)}</TableCell>
-                <TableCell>{leads.SENDER_NAME}</TableCell>
-                <TableCell>{leads.SENDER_MOBILE}</TableCell>
-                <TableCell>{leads.SENDER_EMAIL}</TableCell>
-                <TableCell>{leads.SENDER_COMPANY}</TableCell>
-                <TableCell>{leads.SENDER_ADDRESS}</TableCell>
-                <TableCell>{leads.SENDER_CITY}</TableCell>
-                <TableCell>{leads.SENDER_STATE}</TableCell>
-                <TableCell>{leads.QUERY_PRODUCT_NAME}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+            </Grid>
+            <Grid item xs={3}>
+              <FormControl>
+                <Select value={dataPerPage} onChange={(e) => setDataPerPage(e.target.value)}>
+                  {[5, 10, 15, 20].map((size) => (
+                    <MenuItem key={size} value={size}>
+                      {size} per page
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+          </Grid>
 
-      <Grid container spacing={2} display="flex" justifyContent="center" className="mt-4">
-        <Stack spacing={2}>
-          <Pagination
-            count={Math.ceil(searchedFilter.length / dataPerPage)}
-            page={currentPage}
-            onChange={(e, value) => setCurrentPage(value)}
-            size="small"
-            style={{ cursor: 'pointer' }}
-          />
-        </Stack>
-      </Grid>
+          <TableContainer component={Paper} style={{ marginTop: '20px' }}>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell style={{ fontWeight: 'bold' }}>S.No</TableCell>
+                  <TableCell style={{ fontWeight: 'bold' }}>Unique Query ID</TableCell>
+                  <TableCell style={{ fontWeight: 'bold' }}>Query Type</TableCell>
+                  <TableCell style={{ fontWeight: 'bold' }}>Query Time</TableCell>
+                  <TableCell style={{ fontWeight: 'bold' }}>Name</TableCell>
+                  <TableCell style={{ fontWeight: 'bold' }}>Mobile No</TableCell>
+                  <TableCell style={{ fontWeight: 'bold' }}>Email</TableCell>
+                  <TableCell style={{ fontWeight: 'bold' }}>Company Name</TableCell>
+                  <TableCell style={{ fontWeight: 'bold' }}>Address</TableCell>
+                  <TableCell style={{ fontWeight: 'bold' }}>City</TableCell>
+                  <TableCell style={{ fontWeight: 'bold' }}>State</TableCell>
+                  <TableCell style={{ fontWeight: 'bold' }}>Pincode</TableCell>
+                  <TableCell style={{ fontWeight: 'bold' }}>Country ISO</TableCell>
+                  <TableCell style={{ fontWeight: 'bold' }}>Mobile Alt</TableCell>
+                  <TableCell style={{ fontWeight: 'bold' }}>Phone</TableCell>
+                  <TableCell style={{ fontWeight: 'bold' }}>Phone Alt</TableCell>
+                  <TableCell style={{ fontWeight: 'bold' }}>Email Alt</TableCell>
+                  <TableCell style={{ fontWeight: 'bold' }}>Product Name</TableCell>
+                  <TableCell style={{ fontWeight: 'bold' }}>Message</TableCell>
+                  <TableCell style={{ fontWeight: 'bold' }}>Category Name</TableCell>
+                  <TableCell style={{ fontWeight: 'bold' }}>Call Duration</TableCell>
+                  <TableCell style={{ fontWeight: 'bold' }}>Receiver Mobile</TableCell>
+                  <TableCell className={classes.actionColumnHeader}>Actions</TableCell>
+                </TableRow>
+              </TableHead>
 
-      <Dialog open={openError} onClose={() => setOpenError(false)}>
-        <DialogTitle className="text-center bg-danger">ERROR</DialogTitle>
-        <DialogContent className="mt-3">
-          <p>{errorMsg}</p>
+              <TableBody>
+                {currentData.length > 0 ? (
+                  currentData.map((lead, index) => (
+                    <TableRow key={lead.UNIQUE_QUERY_ID}>
+                      <TableCell>{index + 1 + firstIndexOfData}</TableCell>
+                      <TableCell>{lead.UNIQUE_QUERY_ID}</TableCell>
+                      <TableCell>{lead.QUERY_TYPE}</TableCell>
+                      <TableCell>{formatDate(lead.QUERY_TIME)}</TableCell>
+                      <TableCell>{lead.SENDER_NAME}</TableCell>
+                      <TableCell>{lead.SENDER_MOBILE}</TableCell>
+                      <TableCell>{lead.SENDER_EMAIL}</TableCell>
+                      <TableCell>{lead.SENDER_COMPANY}</TableCell>
+                      <TableCell>{lead.SENDER_ADDRESS}</TableCell>
+                      <TableCell>{lead.SENDER_CITY}</TableCell>
+                      <TableCell>{lead.SENDER_STATE}</TableCell>
+                      <TableCell>{lead.SENDER_PINCODE}</TableCell>
+                      <TableCell>{lead.SENDER_COUNTRY_ISO}</TableCell>
+                      <TableCell>{lead.SENDER_MOBILE_ALT}</TableCell>
+                      <TableCell>{lead.SENDER_PHONE}</TableCell>
+                      <TableCell>{lead.SENDER_PHONE_ALT}</TableCell>
+                      <TableCell>{lead.SENDER_EMAIL_ALT}</TableCell>
+                      <TableCell>{lead.QUERY_PRODUCT_NAME}</TableCell>
+                      <TableCell>{lead.QUERY_MESSAGE}</TableCell>
+                      <TableCell>{lead.QUERY_MCAT_NAME}</TableCell>
+                      <TableCell>{lead.CALL_DURATION}</TableCell>
+                      <TableCell>{lead.RECEIVER_MOBILE}</TableCell>
+                      <TableCell className={classes.stickyAction}>
+                        <Button onClick={() => handleFollow(lead.UNIQUE_QUERY_ID)}>Follow</Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={23} style={{ textAlign: 'center' }}>
+                      No leads found.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+
+          <Stack spacing={2} style={{ marginTop: '20px' }}>
+            <Pagination
+              count={Math.ceil(searchedFilter.length / dataPerPage)}
+              page={currentPage}
+              onChange={(event, page) => setCurrentPage(page)}
+              variant="outlined"
+              shape="rounded"
+              color="primary"
+            />
+          </Stack>
+        </>
+      )}
+
+      {/* Snackbar for error or success messages */}
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={3000}
+        onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert onClose={handleCloseSnackbar} severity={snackbarSeverity} sx={{ width: '100%' }}>
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
+
+      {/* Dialogs for following leads */}
+      <Dialog open={openFollowForm} onClose={() => setOpenFollowForm(false)} fullWidth maxWidth="md">
+        <DialogTitle>Follow Lead</DialogTitle>
+        <DialogContent>
+          <AddFollowingLeads leadData={followData} onSuccess={handleFollowSuccess} />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenError(false)}>Close</Button>
+          <Button onClick={() => setOpenFollowForm(false)} color="primary">
+            Cancel
+          </Button>
         </DialogActions>
       </Dialog>
     </div>

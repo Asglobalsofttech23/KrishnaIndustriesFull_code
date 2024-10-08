@@ -1,264 +1,542 @@
-// new
-
+import React, { useEffect, useState, useRef } from 'react';
 import {
-  Button, Dialog, DialogActions, DialogContent, DialogTitle, FormControl, Grid, MenuItem, Paper, Select, Table, TableBody, TableCell, TableContainer, TableHead, TableRow
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  Typography,
+  TableHead,
+  TableRow,
+  Paper,
+  Button,
+  Dialog,
+  Snackbar,
+  Alert,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Grid,
+  TextField,
+  Select,
+  MenuItem
 } from '@mui/material';
-import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import Search from '../../Search Option/Search';
-import Pagination from '@mui/material/Pagination';
-import Stack from '@mui/material/Stack';
-import AdminAddCustPurch from "./AdminAddCustPurch";
-import UpdateCustPurch from "./AdminUpdateCustPurch";
-import PurchaseInvoice from  "./AdminPurchaseInvoice";
 import config from '../../../config';
-import { format } from 'date-fns';
-import DateFilter from 'components/Admin Panel/Purchase/DateFilter';
+import logo from '../../../images/Krishna Industries.jpeg';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 const AdminCustPurchIndex = () => {
-  const [custPurchData, setCustPurchData] = useState([]);
-  const [searchCustPurchData, setSearchCustPurchData] = useState([]);
-  const [dataPerPage, setDataPerPage] = useState(5);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [openNew, setOpenNew] = useState(false);
-  const [openUpdate, setOpenUpdate] = useState(false);
-  const [openDlt, setOpenDlt] = useState(false);
-  const [openInvoice, setOpenInvoice] = useState(false);
-  const [updateData, setUpdateData] = useState([]);
-  const [dltData, setDltData] = useState();
-  const [invoiceData, setInvoiceData] = useState(null);
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [deliveredIds, setDeliveredIds] = useState(new Set());
+  const [customerInvoiceData, setCustomerInvoiceData] = useState([]);
+  const [filteredInvoices, setFilteredInvoices] = useState([]); // For storing filtered invoices
+  const [searchQuery, setSearchQuery] = useState(''); // For search input
+  const [dateRange, setDateRange] = useState({ from: '', to: '' }); // For date range filter
+  const [selectedInvoice, setSelectedInvoice] = useState(null);
+  const [allProducts, setAllProducts] = useState([]);
+  const [openInvoiceDialog, setOpenInvoiceDialog] = useState(false);
+  const [openDeliveryDialog, setOpenDeliveryDialog] = useState(false);
+  const [courierDetails, setCourierDetails] = useState({
+    courierName: '',
+    deliveryCode: '',
+    deliveryStatus: ''
+  });
+  const pdfRef = useRef(null);
+  const empId = sessionStorage.getItem('emp_id');
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarSeverity, setSnackbarSeverity] = useState('success');
 
-  // Fetch customer purchase data
+  const deliveryStatusOptions = ['Pending', 'Shipped', 'In Transit', 'Delivered'];
+
+  const fromDetails = {
+    company: 'Krishna Industry',
+    phone: '9876542488',
+    email: 'email@example.com',
+    address: '1/3/94 Peelamadu, Coimbatore, 624603',
+    gst: '24797329433'
+  };
+
   useEffect(() => {
-    axios.get(`${config.apiUrl}/cust_purch/getCustPurchDataForAdmin`)
-      .then((res) => {
-        setCustPurchData(res.data);
-        setSearchCustPurchData(res.data);
-
-        // Track delivered IDs
-        const delivered = new Set(res.data.filter(item => item.deliveryed).map(item => item.cust_purch_id));
-        setDeliveredIds(delivered);
+    axios
+      .get(`${config.apiUrl}/cust_purch/getCustomerInvoices`)
+      .then((response) => {
+        setCustomerInvoiceData(response.data);
+        setFilteredInvoices(response.data); // Set filtered invoices initially
       })
-      .catch((err) => {
-        console.log("Customer purchase data is not fetched.");
+      .catch((error) => {
+        console.error('Error fetching customer and invoice data:', error);
       });
-  }, [openNew, openUpdate, openDlt]);
+  }, [empId]);
 
-  const handleUpdate = (id) => {
-    const selectUpdate = custPurchData.find((cust_purch) => cust_purch.cust_purch_id === cust_purch_id);
-    if (selectUpdate) {
-      setUpdateData(selectUpdate);
-      setOpenUpdate(true);
+  const fetchProducts = async () => {
+    if (customerInvoiceData.length > 0) {
+      try {
+        const response = await axios.get(`${config.apiUrl}/product/getProductData`);
+        setAllProducts(response.data);
+      } catch (err) {
+        console.error('Failed to fetch products:', err);
+      }
     }
   };
 
-  const handleDlt = (id) => {
-    setDltData(id);
-    setOpenDlt(true);
+  useEffect(() => {
+    fetchProducts();
+  }, [selectedInvoice]);
+
+  // Handle form input changes for delivery details
+  const handleCourierDetailsChange = (event) => {
+    setCourierDetails({
+      ...courierDetails,
+      [event.target.name]: event.target.value
+    });
   };
 
-  const confirmDlt = () => {
-    axios.delete(`${config.apiUrl}/cust_purch/deleteCustPurch/${dltData}`)
-      .then((res) => {
-        setOpenDlt(false);
-      })
-      .catch((err) => {
-        console.log("Error deleting data. Please try again later.");
+  // Handle search input change
+  const handleSearchChange = (event) => {
+    setSearchQuery(event.target.value);
+    filterInvoices(event.target.value, dateRange.from, dateRange.to);
+  };
+
+  // Handle date range input changes
+  const handleDateRangeChange = (event) => {
+    const { name, value } = event.target;
+    const updatedDateRange = { ...dateRange, [name]: value };
+    setDateRange(updatedDateRange);
+    filterInvoices(searchQuery, updatedDateRange.from, updatedDateRange.to);
+  };
+
+  // Function to filter invoices based on search query and date range
+  const filterInvoices = (query, from, to) => {
+    let filtered = customerInvoiceData;
+
+    // Filter by search query
+    if (query) {
+      const lowerCaseQuery = query.toLowerCase();
+      filtered = filtered.filter((invoice) => {
+        return (
+          invoice.leads_name.toLowerCase().includes(lowerCaseQuery) ||
+          invoice.leads_email.toLowerCase().includes(lowerCaseQuery) ||
+          invoice.leads_mobile.toLowerCase().includes(lowerCaseQuery) ||
+          invoice.invoice_number.toString().includes(lowerCaseQuery)
+        );
       });
+    }
+
+    // Filter by date range
+    if (from && to) {
+      const fromDate = new Date(from);
+      const toDate = new Date(to);
+      filtered = filtered.filter((invoice) => {
+        const invoiceDate = new Date(invoice.invoice_date);
+        return invoiceDate >= fromDate && invoiceDate <= toDate;
+      });
+    }
+
+    setFilteredInvoices(filtered);
   };
 
-  const handleChangeDataPerPage = (e) => {
-    const newDataPerPage = parseInt(e.target.value, 10);
-    if (newDataPerPage === 1) {
-      setDataPerPage(custPurchData.length);
-      setCurrentPage(1);
-    } else {
-      setDataPerPage(newDataPerPage);
-      setCurrentPage(1);
+  // Open Invoice Preview Dialog
+  const handleOpenInvoiceDialog = (invoiceData) => {
+    setSelectedInvoice(invoiceData);
+    setOpenInvoiceDialog(true);
+  };
+
+  // Close Invoice Preview Dialog
+  const handleCloseInvoiceDialog = () => {
+    setOpenInvoiceDialog(false);
+    setSelectedInvoice(null);
+  };
+
+  // Open Delivery Details Dialog
+  const handleOpenDeliveryDialog = (invoiceData) => {
+    setSelectedInvoice(invoiceData);
+    setOpenDeliveryDialog(true);
+  };
+
+  // Close Delivery Details Dialog
+  const handleCloseDeliveryDialog = () => {
+    setOpenDeliveryDialog(false);
+    setSelectedInvoice(null);
+  };
+
+  const handleSnackbarClose = (event, reason) => {
+    if (reason === 'clickaway') {
+      return;
+    }
+    setSnackbarOpen(false);
+  };
+
+  // Submit courier details
+  const handleSubmitCourierDetails = () => {
+    if (selectedInvoice) {
+      const { courierName, deliveryCode, deliveryStatus } = courierDetails;
+      axios
+        .post(`${config.apiUrl}/cust_purch/addDelivery`, {
+          invoiceNumber: selectedInvoice.invoice_number,
+          courierName,
+          deliveryCode,
+          deliveryStatus
+        })
+        .then((response) => {
+          setOpenDeliveryDialog(false); // Close the dialog after submission
+          setCourierDetails({ courierName: '', deliveryCode: '', deliveryStatus: '' });
+          setSnackbarMessage('Courier details added successfully!');
+          setSnackbarSeverity('success');
+          setSnackbarOpen(true);
+        })
+        .catch((error) => {
+          console.error('Error adding courier details:', error);
+          setSnackbarMessage('Error adding courier details.');
+          setSnackbarSeverity('error');
+          setSnackbarOpen(true);
+        });
     }
   };
 
-  const handleInvoice = (data) => {
-    setInvoiceData(data);
-    setOpenInvoice(true);
-  };
+  // Generate PDF
+  const handleGeneratePDF = () => {
+    const doc = new jsPDF();
+    const headerHeight = 20;
+    const footerHeight = 15;
 
-  const handleFilter = () => {
-    if (startDate && endDate) {
-      const filteredData = custPurchData.filter((cust_purch) => {
-        const custDate = new Date(cust_purch.created_at);
-        return custDate >= new Date(startDate) && custDate <= new Date(endDate);
+    html2canvas(pdfRef.current, { scale: 2 }).then((canvas) => {
+      const imgData = canvas.toDataURL('image/png');
+
+      // Header Section
+      doc.setFillColor(0, 0, 139);
+      doc.rect(0, 0, doc.internal.pageSize.width, headerHeight, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(12);
+      doc.setFont('Helvetica', 'bold');
+      doc.text('Invoice Document', doc.internal.pageSize.width / 2, 10, { align: 'center', baseline: 'middle' });
+
+      // Add the canvas image to the PDF below the header
+      doc.addImage(imgData, 'PNG', 10, headerHeight + 5, 190, 0);
+
+      // Footer Section
+      const pageHeight = doc.internal.pageSize.height;
+      doc.setFillColor(0, 0, 139);
+      doc.rect(0, pageHeight - footerHeight, doc.internal.pageSize.width, footerHeight, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(10);
+      doc.text('© 2024 Krishna Industry | All rights reserved', doc.internal.pageSize.width / 2, pageHeight - 5, {
+        align: 'center',
+        baseline: 'middle'
       });
-      setSearchCustPurchData(filteredData);
-      setCurrentPage(1);
-    } else {
-      setSearchCustPurchData(custPurchData);
-    }
-  };
 
-  const firstIndexOfData = (currentPage - 1) * dataPerPage;
-  const lastIndexOfData = currentPage * dataPerPage;
-  const currentData = searchCustPurchData.slice(firstIndexOfData, lastIndexOfData);
-
-  const handleDelivered = (id) => {
-    axios.post(`${config.apiUrl}/cust_purch/markAsDelivered/${id}`)
-      .then((res) => {
-        console.log(res.data.message);
-        setDeliveredIds(prev => new Set(prev.add(id)));
-      })
-      .catch((err) => {
-        console.log("Error marking as delivered. Please try again later.");
-      });
+      // Save the generated PDF
+      doc.save(`Invoice-${selectedInvoice.invoice_number}.pdf`);
+    });
   };
 
   return (
     <>
-      <h1 className='text-center'>Customer Purchase Index</h1>
-      <Grid container spacing={2} className='mt-3'>
-        <Grid item xs={4} display='flex' justifyContent='center'>
-          <Button onClick={() => setOpenNew(true)} variant="contained">Purchase Product</Button>
+      {/* Search and Date Range Filters */}
+      <h1 className="text-center">Customer Purchase Index</h1>
+      <Grid container spacing={2} style={{ padding: '20px' }}>
+        <Grid item xs={12} sm={4}>
+          <TextField
+            label="Search"
+            value={searchQuery}
+            onChange={handleSearchChange}
+            placeholder="Search by name, email, mobile, or invoice number"
+            fullWidth
+          />
         </Grid>
-        <Grid item xs={4} display='flex' justifyContent='center'>
-          <Search data={custPurchData} setData={setSearchCustPurchData} />
+        <Grid item xs={12} sm={4}>
+          <TextField
+            label="From Date"
+            type="date"
+            name="from"
+            value={dateRange.from}
+            onChange={handleDateRangeChange}
+            fullWidth
+            InputLabelProps={{ shrink: true }}
+          />
         </Grid>
-        <Grid item xs={4} display='flex' justifyContent='center'>
-          <FormControl>
-            <Select value={dataPerPage} onChange={handleChangeDataPerPage}>
-              <MenuItem value={5}>5 Per Page</MenuItem>
-              <MenuItem value={10}>10 Per Page</MenuItem>
-              <MenuItem value={15}>15 Per Page</MenuItem>
-              <MenuItem value={1}>All Per Page</MenuItem>
-            </Select>
-          </FormControl>
+        <Grid item xs={12} sm={4}>
+          <TextField
+            label="To Date"
+            type="date"
+            name="to"
+            value={dateRange.to}
+            onChange={handleDateRangeChange}
+            fullWidth
+            InputLabelProps={{ shrink: true }}
+          />
         </Grid>
       </Grid>
-      <DateFilter
-        startDate={startDate}
-        endDate={endDate}
-        setStartDate={setStartDate}
-        setEndDate={setEndDate}
-        onFilter={handleFilter}
-      />
-      <TableContainer component={Paper} className='mt-4'>
+
+      <TableContainer component={Paper}>
         <Table>
           <TableHead>
             <TableRow>
-              {["S.No", "Customer Name", "Customer Mobile", "Customer Email", "Product Name", "Quantity", "Price", "Date/Time", "Payment Type", "Payment Amount", "Balance", "Total", "Action"].map((heading) => (
-                <TableCell key={heading} style={{ fontWeight: 'bold', textAlign: 'center' }}>{heading}</TableCell>
-              ))}
+              <TableCell>S.No</TableCell>
+              <TableCell>Employee</TableCell>
+              <TableCell>Customer Name</TableCell>
+              <TableCell>Mobile</TableCell>
+              <TableCell>Email</TableCell>
+              <TableCell>Company</TableCell>
+              <TableCell>City</TableCell>
+              <TableCell>State</TableCell>
+              <TableCell>Invoice Number</TableCell>
+              <TableCell>Amount</TableCell>
+              <TableCell>Invoice Date</TableCell>
+              <TableCell>Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {currentData.map((cust_purch, index) => {
-              // Split product names, quantities, and prices
-              const productNames = cust_purch.product_names ? cust_purch.product_names.split(',') : [];
-              const quantities = cust_purch.quantities ? cust_purch.quantities.split(',') : [];
-              const prices = cust_purch.prices ? cust_purch.prices.split(',') : [];
-
-              return (
-                <TableRow key={cust_purch.cust_purch_id}>
-                  <TableCell align="center">{firstIndexOfData + index + 1}</TableCell>
-                  <TableCell align="center">{cust_purch.cust_name}</TableCell>
-                  <TableCell align="center">{cust_purch.cust_mobile}</TableCell>
-                  <TableCell align="center">{cust_purch.cust_email}</TableCell>
-                  <TableCell align="center">
-                    {productNames.length > 0 ? (
-                      productNames.map((name, idx) => (
-                        <div key={idx}>{name}</div>
-                      ))
-                    ) : 'No products'}
-                  </TableCell>
-                  <TableCell align="center">
-                    {quantities.length > 0 ? (
-                      quantities.map((qty, idx) => (
-                        <div key={idx}>{qty}</div>
-                      ))
-                    ) : 'No quantities'}
-                  </TableCell>
-                  <TableCell align="center">
-                    {prices.length > 0 ? (
-                      prices.map((price, idx) => (
-                        <div key={idx}>{price}</div>
-                      ))
-                    ) : 'No prices'}
-                  </TableCell>
+            {filteredInvoices.length > 0 ? (
+              filteredInvoices.map((data, index) => (
+                <TableRow key={index}>
+                  <TableCell>{index + 1}</TableCell>
+                  <TableCell>{data.emp_name}</TableCell>
+                  <TableCell>{data.leads_name}</TableCell>
+                  <TableCell>{data.leads_mobile}</TableCell>
+                  <TableCell>{data.leads_email}</TableCell>
+                  <TableCell>{data.leads_company}</TableCell>
+                  <TableCell>{data.leads_city}</TableCell>
+                  <TableCell>{data.leads_state}</TableCell>
+                  <TableCell>{data.invoice_number}</TableCell>
+                  <TableCell>{data.total_with_tax}</TableCell>
+                  <TableCell>{new Date(data.invoice_date).toLocaleDateString()}</TableCell>
                   <TableCell>
-                    {(() => {
-                      const formattedDate = format(new Date(cust_purch.created_at), 'dd/MM/yyyy HH:mm:ss');
-                      const [datePart, timePart] = formattedDate.split(' ');
-                      return (
-                        <>
-                          {datePart}{" "}
-                          <span style={{ color: 'red' }}>{timePart}</span>
-                        </>
-                      );
-                    })()}
-                  </TableCell>
-                  <TableCell align="center">{cust_purch.payment_type}</TableCell>
-                  <TableCell align="center">{cust_purch.payment_amount}</TableCell>
-                  <TableCell align="center">{cust_purch.balance}</TableCell>
-                  <TableCell align="center">{cust_purch.total}</TableCell>
-                  <TableCell align="center">
-                    <Button onClick={() => handleUpdate(cust_purch.cust_purch_id)} variant="contained" color="primary" size="small" style={{ margin: '2px' }}>Edit</Button>
-                    <Button onClick={() => handleDlt(cust_purch.cust_purch_id)} variant="contained" color="secondary" size="small" style={{ margin: '2px' }}>Delete</Button>
-                    <Button onClick={() => handleInvoice(cust_purch)} variant="contained" color="success" size="small" style={{ margin: '2px' }}>Invoice</Button>
-                    {!deliveredIds.has(cust_purch.cust_purch_id) && (
-                      <Button onClick={() => handleDelivered(cust_purch.cust_purch_id)} variant="contained" color="info" size="small" style={{ margin: '2px' }}>Mark as Delivered</Button>
-                    )}
+                    <Button
+                      variant="contained"
+                      color="primary"
+                      onClick={() => handleOpenInvoiceDialog(data)}
+                      style={{ marginRight: '10px' }}
+                    >
+                      Show Invoice
+                    </Button>
+                    <Button variant="contained" color="secondary" onClick={() => handleOpenDeliveryDialog(data)}>
+                      Add Delivery
+                    </Button>
                   </TableCell>
                 </TableRow>
-              );
-            })}
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={10} align="center">
+                  No customer or invoice data found.
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       </TableContainer>
-      <Stack spacing={2} className="mt-4" direction="row" justifyContent="center">
-        <Pagination
-          count={Math.ceil(searchCustPurchData.length / dataPerPage)}
-          page={currentPage}
-          onChange={(e, page) => setCurrentPage(page)}
-          color="primary"
-        />
-      </Stack>
-      <Dialog open={openNew} onClose={() => setOpenNew(false)} maxWidth="md" fullWidth>
-        <DialogTitle>Purchase Product</DialogTitle>
-        <DialogContent>
-          <AdminAddCustPurch onClose={() => setOpenNew(false)} />
-        </DialogContent>
-      </Dialog>
-      <Dialog open={openUpdate} onClose={() => setOpenUpdate(false)} maxWidth="md" fullWidth>
-        <DialogTitle>Update Purchase</DialogTitle>
-        <DialogContent>
-          <UpdateCustPurch updateData={updateData} onClose={() => setOpenUpdate(false)} />
-        </DialogContent>
-      </Dialog>
-      <Dialog open={openDlt} onClose={() => setOpenDlt(false)}>
-        <DialogTitle>Confirm Deletion</DialogTitle>
-        <DialogContent>
-          Are you sure you want to delete this item?
+
+      {/* Invoice Preview Dialog */}
+      <Dialog open={openInvoiceDialog} onClose={handleCloseInvoiceDialog} maxWidth="md" fullWidth>
+        <DialogTitle>Invoice Preview</DialogTitle>
+        <DialogContent dividers>
+          {selectedInvoice ? (
+            <div
+              ref={pdfRef}
+              style={{
+                padding: '10px',
+                backgroundColor: '#ffffff',
+                borderRadius: '8px'
+              }}
+            >
+              <Grid container alignItems="center" justifyContent="space-between">
+                <Grid item xs={3}>
+                  <img src={logo} alt="Company Logo" style={{ width: '120px', height: 'auto' }} />
+                </Grid>
+                <Grid item xs={6} style={{ textAlign: 'right' }}>
+                  <Typography variant="h6">Invoice No: {selectedInvoice.invoice_number}</Typography>
+                  <Typography variant="h6">Date: {new Date(selectedInvoice.invoice_date).toLocaleDateString()}</Typography>
+                  <Typography variant="h6">Payment Type: {selectedInvoice.payment_type}</Typography>
+                  {selectedInvoice.payment_type !== 'Cash' && (
+                    <Typography variant="h6">Transaction Id: {selectedInvoice.transactionId}</Typography>
+                  )}
+                </Grid>
+              </Grid>
+
+              <Grid container spacing={2} style={{ paddingTop: '15px' }}>
+                <Grid item xs={6} style={{ textAlign: 'left' }}>
+                  <Typography variant="h4" gutterBottom>
+                    From
+                  </Typography>
+                  <Typography>{fromDetails.company}</Typography>
+                  <Typography>Phone: {fromDetails.phone}</Typography>
+                  <Typography>Email: {fromDetails.email}</Typography>
+                  <Typography>Address: {fromDetails.address}</Typography>
+                  <Typography>GST NO: {fromDetails.gst}</Typography>
+                </Grid>
+                <Grid item xs={6} style={{ textAlign: 'left' }}>
+                  <Typography variant="h4" gutterBottom>
+                    To
+                  </Typography>
+                  <Typography>{selectedInvoice.leads_name}</Typography>
+                  <Typography>Company: {selectedInvoice.leads_company}</Typography>
+                  <Typography>Phone: {selectedInvoice.leads_mobile}</Typography>
+                  <Typography>Email: {selectedInvoice.leads_email}</Typography>
+                  <Typography>GST No: {selectedInvoice.gst_number}</Typography>
+                </Grid>
+              </Grid>
+
+              <Grid container spacing={3} style={{ borderWidth: '2px', borderColor: 'black', paddingTop: '15px' }}>
+                {/* Billing Address */}
+
+                <Grid item xs={6}>
+                  <Typography variant="h4">Billing Address</Typography>
+                  <Typography variant="h6">
+                    {selectedInvoice.billing_door_number || 'N/A'},<br /> {selectedInvoice.billing_street || 'N/A'},{' '}
+                    {selectedInvoice.billing_landMark || 'N/A'}, <br />
+                    {selectedInvoice.billing_city || 'N/A'},<br /> {selectedInvoice.billing_state || 'N/A'} -{' '}
+                    {selectedInvoice.billing_pincode || 'N/A'}
+                  </Typography>
+                </Grid>
+
+                {/* Shipping Address */}
+                <Grid item xs={6}>
+                  <Typography variant="h4">Shipping Address</Typography>
+
+                  <Typography variant="h6">
+                    {selectedInvoice.billing_door_number || 'N/A'}, <br />
+                    {selectedInvoice.billing_street || 'N/A'}, {selectedInvoice.billing_landMark || 'N/A'}, <br />
+                    {selectedInvoice.billing_city || 'N/A'}, <br />
+                    {selectedInvoice.billing_state || 'N/A'} - {selectedInvoice.billing_pincode || 'N/A'}
+                  </Typography>
+                </Grid>
+              </Grid>
+
+              <TableContainer style={{ marginTop: '20px' }}>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Product</TableCell>
+                      <TableCell>Quantity</TableCell>
+                      <TableCell>Price</TableCell>
+                      <TableCell>Sub Total</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {selectedInvoice.product_details.map((product, index) => {
+                      const matchedProduct = allProducts.find((p) => p.pro_id === product.pro_id);
+                      return (
+                        <TableRow key={index}>
+                          <TableCell>{matchedProduct ? matchedProduct.pro_name : 'Unknown Product'}</TableCell>
+                          <TableCell>{product.quantity}</TableCell>
+                          <TableCell>{product.price}</TableCell>
+                          <TableCell>{parseFloat(product.price) * parseInt(product.quantity)}</TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+              <Grid item xs={6} sm={3} margin={'15px'} marginTop={'20px'}>
+                <Typography variant="h4" align="right" margin={'3px'}>
+                  Totals Section
+                </Typography>
+                <Grid container direction="column">
+                  <Grid item container justifyContent="space-between">
+                    <Typography variant="h6" style={{ textAlign: 'right', flex: 1 }}>
+                      Total (without tax)
+                    </Typography>
+                    <Typography variant="h6" style={{ textAlign: 'right', flex: 0.1 }}>
+                      {selectedInvoice.total_without_tax}
+                    </Typography>
+                  </Grid>
+                  <Grid item container justifyContent="space-between">
+                    <Typography variant="h6" style={{ textAlign: 'right', flex: 1 }}>
+                      Discount
+                    </Typography>
+                    <Typography variant="h6" style={{ textAlign: 'right', flex: 0.1 }}>
+                      {selectedInvoice.discountType === 'percentage' ? `${selectedInvoice.discount}%` : `₹${selectedInvoice.discount}`}
+                    </Typography>
+                  </Grid>
+                  <Grid item container justifyContent="space-between">
+                    <Typography variant="h6" style={{ textAlign: 'right', flex: 1 }}>
+                      GST
+                    </Typography>
+                    <Typography variant="h6" style={{ textAlign: 'right', flex: 0.1 }}>
+                      {selectedInvoice.gst}%
+                    </Typography>
+                  </Grid>
+                  <Grid item container justifyContent="space-between">
+                    <Typography variant="h4" style={{ textAlign: 'right', flex: 1 }}>
+                      Total (with tax)
+                    </Typography>
+                    <Typography variant="h4" style={{ textAlign: 'right', flex: 0.1 }}>
+                      {selectedInvoice.total_with_tax}
+                    </Typography>
+                  </Grid>
+                </Grid>
+              </Grid>
+            </div>
+          ) : (
+            <Typography>No invoice data available.</Typography>
+          )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={confirmDlt} color="primary">Confirm</Button>
-          <Button onClick={() => setOpenDlt(false)} color="secondary">Cancel</Button>
+          <Button onClick={handleCloseInvoiceDialog}>Close</Button>
+          <Button onClick={handleGeneratePDF} color="primary">
+            Generate PDF
+          </Button>
         </DialogActions>
       </Dialog>
-      <Dialog open={openInvoice} onClose={() => setOpenInvoice(false)} maxWidth="md" fullWidth>
-  <DialogTitle>Purchase Invoice</DialogTitle>
-  <DialogContent dividers>
-    {invoiceData && <PurchaseInvoice data={invoiceData} dueDate={invoiceData.dueDate} />}
-  </DialogContent>
-  <DialogActions>
-    <Button onClick={() => setOpenInvoice(false)} color="primary">Close</Button>
-  </DialogActions>
-</Dialog>
+
+      {/* Delivery Details Dialog */}
+      <Dialog open={openDeliveryDialog} onClose={handleCloseDeliveryDialog} maxWidth="sm" fullWidth>
+        <DialogTitle>Add Delivery Details</DialogTitle>
+        <DialogContent>
+          <div>
+            <Typography variant="h6">Invoice No: {selectedInvoice?.invoice_number}</Typography>
+            <TextField
+              label="Courier Name"
+              name="courierName"
+              value={courierDetails.courierName}
+              onChange={handleCourierDetailsChange}
+              fullWidth
+              margin="normal"
+            />
+            <TextField
+              label="Delivery Code"
+              name="deliveryCode"
+              value={courierDetails.deliveryCode}
+              onChange={handleCourierDetailsChange}
+              fullWidth
+              margin="normal"
+            />
+            <Select
+              label="Delivery Status"
+              name="deliveryStatus"
+              value={courierDetails.deliveryStatus}
+              onChange={handleCourierDetailsChange}
+              fullWidth
+              displayEmpty
+              margin="normal"
+            >
+              <MenuItem value="" disabled>
+                Select Status
+              </MenuItem>
+              {deliveryStatusOptions.map((status) => (
+                <MenuItem key={status} value={status}>
+                  {status}
+                </MenuItem>
+              ))}
+            </Select>
+          </div>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDeliveryDialog}>Cancel</Button>
+          <Button onClick={handleSubmitCourierDetails} color="primary">
+            Submit
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Snackbar for feedback */}
+      <Snackbar open={snackbarOpen} autoHideDuration={4000} onClose={handleSnackbarClose}>
+        <Alert onClose={handleSnackbarClose} severity={snackbarSeverity}>
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
     </>
   );
 };
-
-
-
 
 export default AdminCustPurchIndex;

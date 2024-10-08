@@ -1,172 +1,338 @@
-
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
+import axios from 'axios';
 import {
-  Grid,
-  Paper,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
-  TextField,
+  Paper,
+  Grid,
   Button,
+  TextField,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Typography,
-  Toolbar,
-  AppBar,
-  CssBaseline,
+  Snackbar,
+  Alert,
+  Select,
+  MenuItem,
+  InputLabel,
+  FormControl,
+  Pagination
 } from '@mui/material';
-import axios from 'axios';
-import config from 'config';
+import Autocomplete from '@mui/material/Autocomplete';
 
-function PurchaseReport() {
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [reportData, setReportData] = useState([]);
-  const printRef = useRef();
+import config from '../../../config'; // Assuming you have the API URL configured here
 
-  const fetchData = async () => {
-    try {
-      const response = await axios.get(`${config.apiUrl}/sales/getSale`, {
-        params: {
-          startDate,
-          endDate,
-        },
+const PurchaseReport = () => {
+  const [purchases, setPurchases] = useState([]); // Purchase history from the backend
+  const [open, setOpen] = useState(false); // Dialog open state for new purchase entry
+  const [allProducts, setAllProducts] = useState([]);
+  const [snackbarOpen, setSnackbarOpen] = useState(false); // Snackbar open state
+  const [snackbarMessage, setSnackbarMessage] = useState(''); // Snackbar message
+  const [snackbarSeverity, setSnackbarSeverity] = useState('success'); // Snackbar severity
+  const [formData, setFormData] = useState({
+    productName: '',
+    productId: '',
+    specification: '',
+    quantity: '',
+    price: '',
+    gst: '',
+    cgst: '',
+    sgst: '',
+    totalPrice: '', // Total price without GST
+    totalPriceWithGST: '', // Total price including GST
+    fromName: '',
+    address: '',
+    street: '',
+    city: '',
+    state: '',
+    pinCode: ''
+  });
+
+  const [searchTerm, setSearchTerm] = useState(''); // Search term
+  const [monthFilter, setMonthFilter] = useState(''); // Month filter
+  const [yearFilter, setYearFilter] = useState(''); // Year filter
+  const [currentPage, setCurrentPage] = useState(1); // Current page for pagination
+  const [rowsPerPage, setRowsPerPage] = useState(5); // Rows per page
+
+  // Fetch purchase history from the backend
+  useEffect(() => {
+    const fetchPurchases = async () => {
+      try {
+        const response = await axios.get(`${config.apiUrl}/purchase/purchases`);
+        setPurchases(response.data);
+      } catch (error) {
+        console.error('Error fetching purchases:', error);
+      }
+    };
+    fetchPurchases();
+  }, []);
+
+  useEffect(() => {
+    axios
+      .get(`${config.apiUrl}/product/getProductData`) // Adjust endpoint as needed
+      .then((res) => {
+        setAllProducts(res.data);
+      })
+      .catch((err) => {
+        console.error('Error fetching products:', err);
+        setSnackbarMessage('Failed to fetch products');
+        setSnackbarSeverity('error');
+        setSnackbarOpen(true);
       });
-      setReportData(response.data);
-    } catch (error) {
-      console.error('Error fetching data:', error);
+  }, []);
+
+  // Open the dialog to enter a new purchase
+  const handleClickOpen = () => {
+    setOpen(true);
+  };
+
+  // Close the dialog
+  const handleClose = () => {
+    setOpen(false);
+    resetForm();
+  };
+
+  // Reset form data
+  const resetForm = () => {
+    setFormData({
+      productName: '',
+      productId: '',
+      specification: '',
+      quantity: '',
+      price: '',
+      gst: '',
+      cgst: '',
+      sgst: '',
+      totalPrice: '',
+      totalPriceWithGST: '',
+      fromName: '',
+      address: '',
+      street: '',
+      city: '',
+      state: '',
+      pinCode: ''
+    });
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value
+    }));
+
+    // Calculate CGST, SGST, Total Price without GST and Total Price with GST
+    if (name === 'gst') {
+      const gstValue = parseFloat(value) || 0;
+      const quantity = parseFloat(formData.quantity) || 0;
+      const price = parseFloat(formData.price) || 0;
+
+      const totalPrice = (quantity * price).toFixed(2);
+      const totalGST = (totalPrice * (gstValue / 100)).toFixed(2);
+
+      // Calculate SGST and CGST
+      const cgst = (totalGST / 2).toFixed(2);
+      const sgst = cgst; // SGST is equal to CGST
+
+      setFormData((prev) => ({
+        ...prev,
+        gst: value,
+        cgst,
+        sgst,
+        totalPrice,
+        totalPriceWithGST: (parseFloat(totalPrice) + parseFloat(totalGST)).toFixed(2)
+      }));
+    }
+
+    if (name === 'quantity' || name === 'price') {
+      const quantity = parseFloat(formData.quantity) || 0;
+      const price = parseFloat(formData.price) || 0;
+      const totalPrice = (quantity * price).toFixed(2);
+
+      const gstValue = parseFloat(formData.gst) || 0;
+      const totalGST = (totalPrice * (gstValue / 100)).toFixed(2);
+
+      const cgst = (totalGST / 2).toFixed(2);
+      const sgst = cgst; // SGST is equal to CGST
+
+      setFormData((prev) => ({
+        ...prev,
+        totalPrice,
+        cgst,
+        sgst,
+        totalPriceWithGST: (parseFloat(totalPrice) + parseFloat(totalGST)).toFixed(2)
+      }));
     }
   };
 
-  const handleFind = () => {
-    fetchData();
+  const handleSubmit = async () => {
+    try {
+      // Make the POST request to the backend with the purchase data
+      await axios.post(`${config.apiUrl}/purchase/purchases`, formData);
+      // Refresh purchase history after successful submission
+      const response = await axios.get(`${config.apiUrl}/purchase/purchases`);
+      setPurchases(response.data);
+      setSnackbarMessage('Purchase added successfully!');
+      setSnackbarSeverity('success');
+      setSnackbarOpen(true);
+      handleClose();
+    } catch (error) {
+      console.error('Error submitting purchase data:', error);
+      setSnackbarMessage('Error adding purchase. Please try again.');
+      setSnackbarSeverity('error');
+      setSnackbarOpen(true);
+    }
   };
 
-  const handlePrint = () => {
-    window.print();
+  // Close Snackbar
+  const handleSnackbarClose = (event, reason) => {
+    if (reason === 'clickaway') {
+      return;
+    }
+    setSnackbarOpen(false);
   };
 
-  const calculateProductTotal = (price, quantity) => {
-    return price * quantity;
+  // Handle search input change
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+    setCurrentPage(1); // Reset to first page on search
   };
 
-  const calculateTotalPurchase = () => {
-    return reportData.reduce((total, item) => total + calculateProductTotal(item.price, item.quantity), 0);
+  // Handle month filter change
+  const handleMonthFilterChange = (e) => {
+    setMonthFilter(e.target.value);
+    setCurrentPage(1); // Reset to first page on filter change
   };
+
+  // Handle year filter change
+  const handleYearFilterChange = (e) => {
+    setYearFilter(e.target.value);
+    setCurrentPage(1); // Reset to first page on filter change
+  };
+
+  // Get filtered and paginated purchases
+  const getFilteredPurchases = () => {
+    return purchases.filter((purchase) => {
+      const matchesSearch = purchase.productName.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesMonth = monthFilter ? new Date(purchase.date).getMonth() + 1 === parseInt(monthFilter) : true;
+      const matchesYear = yearFilter ? new Date(purchase.date).getFullYear() === parseInt(yearFilter) : true;
+      return matchesSearch && matchesMonth && matchesYear;
+    });
+  };
+
+  // Handle pagination change
+  const handlePageChange = (event, page) => {
+    setCurrentPage(page);
+  };
+
+  // Calculate total number of pages
+  const totalPages = Math.ceil(getFilteredPurchases().length / rowsPerPage);
+  const displayedPurchases = getFilteredPurchases().slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
 
   return (
-    <div style={{ display: 'flex' }}>
-      <CssBaseline />
-      <main style={{ flexGrow: 1, padding: '24px' }}>
-        <AppBar position="static" sx={{ backgroundColor: 'pink' }}>
-          <Toolbar>
-            <Typography variant="h6" noWrap>
-              SalesReport
-            </Typography>
-          </Toolbar>
-        </AppBar>
-        <Paper sx={{ padding: '24px', marginTop: '16px' }}>
-          <Grid container spacing={2}>
-            <Grid item xs={12} sm={4}>
-              <TextField
-                label="Start Date"
-                type="date"
-                fullWidth
-                InputLabelProps={{ shrink: true }}
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                sx={{ backgroundColor: '#f5f5f5' }}
-              />
-            </Grid>
-            <Grid item xs={12} sm={4}>
-              <TextField
-                label="End Date"
-                type="date"
-                fullWidth
-                InputLabelProps={{ shrink: true }}
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                sx={{ backgroundColor: '#f5f5f5' }}
-              />
-            </Grid>
-            <Grid item xs={12} sm={2}>
-              <Button
-                variant="contained"
-                color="primary"
-                fullWidth
-                sx={{ marginTop: '8px' }}
-                onClick={handleFind}
-              >
-                Find
-              </Button>
-            </Grid>
-            <Grid item xs={12} sm={2}>
-              <Button
-                variant="contained"
-                color="secondary"
-                fullWidth
-                sx={{ marginTop: '8px' }}
-                onClick={handlePrint}
-              >
-                Print
-              </Button>
-            </Grid>
-          </Grid>
-          <TableContainer component={Paper} sx={{ marginTop: '24px' }} ref={printRef} id="printArea">
-            <Table>
-              <TableHead>
-                <TableRow sx={{ backgroundColor: '#e0f7fa' }}>
-                  <TableCell sx={{ fontWeight: 'bold', color: '#00796b' }}>Sales Address</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold', color: '#00796b' }}>Product ID</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold', color: '#00796b' }}>Price</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold', color: '#00796b' }}>Quantity</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold', color: '#00796b' }}>Total</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold', color: '#00796b' }}>Purchase Date</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {reportData.map((data, index) => (
-                  <TableRow key={index} sx={{ backgroundColor: index % 2 === 0 ? '#f1f8e9' : '#ffffff' }}>
-                    <TableCell>{data.sale_address}</TableCell>
-                    <TableCell>{data.pro_id}</TableCell>
-                    <TableCell>{data.price}</TableCell>
-                    <TableCell>{data.quantity}</TableCell>
-                    <TableCell>{Math.round(calculateProductTotal(data.price, data.quantity))}</TableCell>
-                    <TableCell>{data.created_at}</TableCell>
-                  </TableRow>
-                ))}
-                <TableRow>
-                  <TableCell colSpan={4} sx={{ fontWeight: 'bold', textAlign: 'right' }}>
-                    Total:
-                  </TableCell>
-                  <TableCell sx={{ fontWeight: 'bold', color: '#d32f2f' }}>
-                    {Math.round(calculateTotalPurchase())}
-                  </TableCell>
-                  <TableCell />
-                </TableRow>
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </Paper>
-      </main>
-      <style jsx global>{`
-        @media print {
-          body * {
-            visibility: hidden;
-          }
-          #printArea, #printArea * {
-            visibility: visible;
-          }
-          #printArea {
-            position: absolute;
-            left: 0;
-            top: 0;
-          }
-        }
-      `}</style>
-    </div>
+    <>
+      {/* Search and Filter Section */}
+      <Typography variant="h1" align="center" marginTop={'20px'} gutterBottom>
+        Purchase History
+      </Typography>
+
+      <Grid container spacing={2} style={{ marginBottom: '20px' }}>
+        <Grid item xs={12} sm={6}>
+          <TextField label="Search" variant="outlined" value={searchTerm} onChange={handleSearchChange} fullWidth />
+        </Grid>
+        <Grid item xs={6} sm={3}>
+          <FormControl fullWidth variant="outlined">
+            <InputLabel>Month</InputLabel>
+            <Select value={monthFilter} onChange={handleMonthFilterChange} label="Month">
+              <MenuItem value="">
+                <em>All</em>
+              </MenuItem>
+              {[...Array(12).keys()].map((month) => (
+                <MenuItem key={month + 1} value={month + 1}>
+                  {month + 1}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Grid>
+        <Grid item xs={6} sm={3}>
+          <FormControl fullWidth variant="outlined">
+            <InputLabel>Year</InputLabel>
+            <Select value={yearFilter} onChange={handleYearFilterChange} label="Year">
+              <MenuItem value="">
+                <em>All</em>
+              </MenuItem>
+              {[2020, 2021, 2022, 2023, 2024].map((year) => (
+                <MenuItem key={year} value={year}>
+                  {year}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Grid>
+      </Grid>
+
+      <TableContainer component={Paper} style={{ marginTop: '20px' }}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>Product Name</TableCell>
+              <TableCell>Specification</TableCell>
+              <TableCell>Quantity</TableCell>
+              <TableCell>Price Per Piece</TableCell>
+              <TableCell>CGST</TableCell>
+              <TableCell>SGST</TableCell>
+              <TableCell>Total GST</TableCell>
+              <TableCell>Total Price (Without GST)</TableCell>
+              <TableCell>Total Price (With GST)</TableCell>
+              <TableCell>From</TableCell>
+              <TableCell>Address</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {displayedPurchases.map((purchase) => (
+              <TableRow key={purchase.id}>
+                <TableCell>{purchase.productName}</TableCell>
+                <TableCell>{purchase.specification}</TableCell>
+                <TableCell>{purchase.quantity}</TableCell>
+                <TableCell>{purchase.price}</TableCell>
+                <TableCell>{purchase.cgst}</TableCell>
+                <TableCell>{purchase.sgst}</TableCell>
+                <TableCell>{(parseFloat(purchase.cgst) + parseFloat(purchase.sgst)).toFixed(2)}</TableCell>
+                <TableCell>{purchase.totalPrice}</TableCell>
+                <TableCell>{purchase.totalPriceWithGST}</TableCell>
+                <TableCell>{purchase.fromName}</TableCell>
+                <TableCell>
+                  {purchase.address}, {purchase.street}, {purchase.city}, {purchase.state}, {purchase.pinCode}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+
+      {/* Pagination */}
+      <Pagination
+        count={totalPages}
+        page={currentPage}
+        onChange={handlePageChange}
+        style={{ marginTop: '20px', display: 'flex', justifyContent: 'center' }}
+      />
+
+      {/* Snackbar for notifications */}
+      <Snackbar open={snackbarOpen} autoHideDuration={6000} onClose={handleSnackbarClose}>
+        <Alert onClose={handleSnackbarClose} severity={snackbarSeverity} sx={{ width: '100%' }}>
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
+    </>
   );
-}
+};
 
 export default PurchaseReport;

@@ -1,12 +1,15 @@
 // assets
-import { IconTypography, IconPalette, IconShadow, IconWindmill } from '@tabler/icons-react';
+import { IconTypography, IconPalette, IconShadow, IconStack3, IconWindmill, IconQrcode } from '@tabler/icons-react';
 
 // constant
 const icons = {
   IconTypography,
+  IconStack3,
   IconPalette,
   IconShadow,
-  IconWindmill
+  IconWindmill,
+  IconQrcode
+
 };
 
 // ==============================|| UTILITIES MENU ITEMS ||============================== //
@@ -21,7 +24,7 @@ const admin_Stock = {
       title: 'Stock Index',
       type: 'item',
       url: '/stockIndex',
-      icon: icons.IconTypography,
+      icon: icons.IconStack3,
       breadcrumbs: false
     },
     {
@@ -29,7 +32,7 @@ const admin_Stock = {
       title: 'QRCode-Scanner',
       type: 'item',
       url: '/qrcode',
-      icon: icons.IconTypography,
+      icon: icons.IconQrcode,
       breadcrumbs: false
     }
   ]

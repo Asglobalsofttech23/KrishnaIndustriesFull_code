@@ -21,7 +21,7 @@ const admin_product = {
       title: 'Product Index',
       type: 'item',
       url: '/proIndex',
-      icon: icons.IconTypography,
+      icon: icons.IconWindmill,
       breadcrumbs: false
     }
   ]

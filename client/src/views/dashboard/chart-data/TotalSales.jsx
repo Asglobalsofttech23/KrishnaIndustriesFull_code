@@ -17,7 +17,7 @@ const SalesChart = () => {
     setLoading(true);
     try {
       const response = await axios.get(`http://localhost:3030/sales/totalSalesAmount`, {
-        params: { filterType },
+        params: { filterType }
       });
       const data = response.data;
       formatChartData(data);
@@ -32,14 +32,14 @@ const SalesChart = () => {
     let values = [];
 
     if (filterType === 'day') {
-      labels = data.map(item => moment(item.date).format('DD MMM YYYY'));
-      values = data.map(item => item.totalPurchaseAmount);
+      labels = data.map((item) => moment(item.date).format('DD MMM YYYY'));
+      values = data.map((item) => item.totalPurchaseAmount);
     } else if (filterType === 'month') {
-      labels = data.map(item => moment(item.month, 'MM').format('MMMM'));
-      values = data.map(item => item.totalPurchaseAmount);
+      labels = data.map((item) => moment(item.month, 'MM').format('MMMM'));
+      values = data.map((item) => item.totalPurchaseAmount);
     } else if (filterType === 'year') {
-      labels = data.map(item => item.year);
-      values = data.map(item => item.totalPurchaseAmount);
+      labels = data.map((item) => item.year);
+      values = data.map((item) => item.totalPurchaseAmount);
     } else if (filterType === 'allYears') {
       labels = ['All Years'];
       values = [data[0].totalPurchaseAmount];
@@ -53,9 +53,9 @@ const SalesChart = () => {
           data: values,
           borderColor: 'rgba(75, 192, 192, 1)',
           backgroundColor: 'rgba(75, 192, 192, 0.2)',
-          fill: true,
-        },
-      ],
+          fill: true
+        }
+      ]
     });
   };
 
@@ -63,22 +63,14 @@ const SalesChart = () => {
     <div>
       <div>
         <label htmlFor="filter">Filter by: </label>
-        <select
-          id="filter"
-          value={filterType}
-          onChange={(e) => setFilterType(e.target.value)}
-        >
+        <select id="filter" value={filterType} onChange={(e) => setFilterType(e.target.value)}>
           <option value="day">Day</option>
           <option value="month">Month</option>
           <option value="year">Year</option>
           <option value="allYears">All Years</option>
         </select>
       </div>
-      {loading ? (
-        <p>Loading...</p>
-      ) : (
-        <Line data={chartData} />
-      )}
+      {loading ? <p>Loading...</p> : <Line data={chartData} />}
     </div>
   );
 };

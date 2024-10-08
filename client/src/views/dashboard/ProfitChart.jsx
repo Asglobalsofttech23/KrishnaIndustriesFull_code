@@ -2,13 +2,15 @@ import PropTypes from 'prop-types';
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 
-// material-ui
+// Material-UI
 import { useTheme } from '@mui/material/styles';
 import Typography from '@mui/material/Typography';
 import CurrencyRupeeOutlinedIcon from '@mui/icons-material/CurrencyRupeeOutlined';
 import Grid from '@mui/material/Grid';
+import CircularProgress from '@mui/material/CircularProgress';
+import Snackbar from '@mui/material/Snackbar';
 
-// apexcharts
+// ApexCharts
 import Chart from 'react-apexcharts';
 import config from '../../config';
 import MainCard from 'ui-component/cards/MainCard';
@@ -18,35 +20,51 @@ const TotalProfitChart = ({ isLoading }) => {
   const theme = useTheme();
   const [totals, setTotals] = useState({ total_sales: 0, total_purchases: 0 });
   const [profit, setProfit] = useState(0);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    axios
-      .get(`${config.apiUrl}/totals`)
-      .then((res) => {
+    const fetchFinancialData = async () => {
+      try {
+        const res = await axios.get(`${config.apiUrl}/quotation/financial-data`);
         const data = res.data;
+
         // Ensure values are numbers
-        const totalSales = Number(data.total_sales) || 0;
-        const totalPurchases = Number(data.total_purchases) || 0;
+        const totalSales = parseFloat(data.totalSales) || 0; // Convert to float
+        const totalPurchases = parseFloat(data.totalPurchases) || 0; // Convert to float
 
         setTotals({ total_sales: totalSales, total_purchases: totalPurchases });
-        setProfit(totalSales - totalPurchases);
-      })
-      .catch((err) => {
+        setProfit(totalSales - totalPurchases); // Calculate profit
+      } catch (err) {
         console.error('Error fetching total data:', err);
-      });
+        setError('Failed to fetch financial data.');
+      }
+    };
+
+    fetchFinancialData();
   }, []);
 
   const [chartData, setChartData] = useState({
     series: [
       {
-        name: 'Total Profit',
-        data: [0]
+        name: 'Total Sales',
+        data: [0] // Initial value
+      },
+      {
+        name: 'Total Purchases',
+        data: [0] // Initial value
+      },
+      {
+        name: 'Profit',
+        data: [0] // Initial value
       }
     ],
     options: {
       chart: {
         type: 'bar',
-        height: 350
+        height: 350,
+        toolbar: {
+          show: false
+        }
       },
       plotOptions: {
         bar: {
@@ -64,11 +82,25 @@ const TotalProfitChart = ({ isLoading }) => {
         colors: ['transparent']
       },
       xaxis: {
-        categories: ['Profit']
+        categories: ['Sales - Purchases - Profit'], // Updated categories
+        labels: {
+          style: {
+            colors: theme.palette.text.primary, // Use theme colors
+            fontSize: '14px',
+            width:'3',
+            fontWeight: 600
+          },
+          offsetY: 3, // Adjust the vertical offset for label positioning
+          offsetX: 3,
+        },
+        // tickPlacement: 'on' // Ensure ticks align with categories
       },
       yaxis: {
         title: {
-          text: 'Total Profit'
+          text: 'Amount'
+        },
+        labels: {
+          formatter: (value) => `₹${value.toFixed(2)}` // Format y-axis labels
         }
       },
       fill: {
@@ -85,28 +117,41 @@ const TotalProfitChart = ({ isLoading }) => {
       },
       tooltip: {
         y: {
-          formatter: (val) => `$${val.toFixed(2)}`
+          formatter: (val) => `₹${val.toFixed(2)}`
         }
       }
     }
   });
 
   useEffect(() => {
+    // Update chart data when totals or profit changes
     setChartData((prevState) => ({
       ...prevState,
       series: [
         {
-          name: 'Total Profit',
-          data: [profit.toFixed(2)]
+          name: 'Total Sales',
+          data: [totals.total_sales.toFixed(2)] // Update total sales
+        },
+        {
+          name: 'Total Purchases',
+          data: [totals.total_purchases.toFixed(2)] // Update total purchases
+        },
+        {
+          name: 'Profit',
+          data: [profit.toFixed(2)] // Update profit for the chart
         }
       ]
     }));
-  }, [profit]);
+  }, [totals, profit]);
+
+  const handleCloseSnackbar = () => {
+    setError(null);
+  };
 
   return (
     <div>
       {isLoading ? (
-        <Typography variant="h6">Loading...</Typography>
+        <CircularProgress />
       ) : (
         <MainCard>
           <Typography variant="h4" align="center" color={theme.palette.primary.main}>
@@ -115,18 +160,22 @@ const TotalProfitChart = ({ isLoading }) => {
           <Grid container spacing={3}>
             <Grid item xs={6}>
               <Typography variant="h6">
-                Total Sales: <CurrencyRupeeOutlinedIcon />{totals.total_sales.toFixed(2)}
+                Total Sales: <CurrencyRupeeOutlinedIcon />
+                {totals.total_sales.toFixed(2)}
               </Typography>
             </Grid>
             <Grid item xs={6}>
               <Typography variant="h6">
-                Total Purchases: <CurrencyRupeeOutlinedIcon />{totals.total_purchases.toFixed(2)}
+                Total Purchases: <CurrencyRupeeOutlinedIcon />
+                {totals.total_purchases.toFixed(2)}
               </Typography>
             </Grid>
           </Grid>
           <Chart options={chartData.options} series={chartData.series} type="bar" height={350} />
         </MainCard>
       )}
+
+      <Snackbar open={Boolean(error)} autoHideDuration={6000} onClose={handleCloseSnackbar} message={error} />
     </div>
   );
 };

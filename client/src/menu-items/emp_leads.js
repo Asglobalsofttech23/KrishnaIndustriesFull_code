@@ -1,12 +1,18 @@
 // assets
-import { IconTypography, IconPalette, IconShadow, IconWindmill } from '@tabler/icons-react';
+import { IconTypography, IconClipboardList, IconChartLine, IconUserSearch, IconFileInvoice, IconPalette, IconShadow, IconWindmill, IconUserPlus, IconPhoneOff } from '@tabler/icons-react';
 
 // constant
 const icons = {
   IconTypography,
   IconPalette,
   IconShadow,
-  IconWindmill
+  IconWindmill,
+  IconUserPlus,
+  IconPhoneOff,
+  IconUserSearch,
+  IconFileInvoice,
+  IconChartLine,
+  IconClipboardList
 };
 
 // ==============================|| UTILITIES MENU ITEMS ||============================== //
@@ -17,29 +23,37 @@ const emp_leads = {
   type: 'group',
   children: [
     {
-      id: 'emp-leads',
+      id: 'emp-leadss',
       title: 'Leads Index',
       type: 'item',
       url: '/leadsIndex',
-      icon: icons.IconTypography,
+      icon: icons.IconUserSearch,
       breadcrumbs: false
     },
     {
-        id: 'emp-leads',
-        title: 'Following Leads Index',
-        type: 'item',
-        url: '/flwLeadsIndex',
-        icon: icons.IconTypography,
-        breadcrumbs: false
-      },
-      {
-        id: 'emp-leads',
-        title: 'Not call Attended Leads',
-        type: 'item',
-        url: '/NotAttendedcall',
-        icon: icons.IconTypography,
-        breadcrumbs: false
-      }
+      id: 'emps-leads',
+      title: 'Following Leads Index',
+      type: 'item',
+      url: '/flwLeadsIndex',
+      icon: icons.IconUserPlus,
+      breadcrumbs: false
+    },
+    {
+      id: 'emp-leads',
+      title: 'Not call Attended Leads',
+      type: 'item',
+      url: '/NotAttendedcall',
+      icon: icons.IconPhoneOff,
+      breadcrumbs: false
+    },
+    {
+      id: 'emp-leadsHistory',
+      title: 'Leads Invoice History',
+      type: 'item',
+      url: '/invoiceHistory',
+      icon: icons.IconFileInvoice,
+      breadcrumbs: false
+    }
   ]
 };
 

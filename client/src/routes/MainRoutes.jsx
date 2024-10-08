@@ -9,6 +9,13 @@ import StockManagement from 'components/Admin Panel/Stock/Stock Index';
 import NotAttendedcallList from 'components/Admin Panel/Leads/Not Call Attended';
 import EmpCallNotAttendedLeads from 'components/Employee Panel/Employee Leads/Emp Not Call Attended';
 import QrCodeScanner from 'components/Admin Panel/Stock/QrCodeScanner';
+import QuotationPage from 'components/Employee Panel/Following Leads/QuotationPage';
+import InvoicePage from 'components/Employee Panel/Following Leads/InvoicePage';
+import ProformaPage from 'components/Employee Panel/Following Leads/Proforma';
+import InvoiceHistory from 'components/Employee Panel/Following Leads/InvoiceHistory';
+
+import EmployeeAttendancePage from 'components/Admin Panel/Employee/EmployeeAttendancepost';
+import InvoiceHistoryAdmin from 'components/Admin Panel/Purchase/InvoiceHistory';
 // import UploadExcel from 'components/Admin Panel/Purchase/UploadExell';
 
 const Login = Loadable(lazy(() => import('views/pages/authentication3/Login')));
@@ -26,9 +33,9 @@ const SalesIndex = Loadable(lazy(() => import('components/Admin Panel/Sales/Sale
 const AdminCustomerIndex = Loadable(lazy(() => import('components/Admin Panel/Customer/AdminCustomerIndex')));
 const AdminCustPurchIndex = Loadable(lazy(() => import('components/Admin Panel/Admin Customer Purchase/AdminCustPurchIndex')));
 const UploadExcel = Loadable(lazy(() => import('components/Admin Panel/Purchase/UploadExell')));
-const EmpAttendanceReport = Loadable(lazy(()=> import('components/Admin Panel/Reports/EmployeeAttendance')))
-const PurchaseReport = Loadable(lazy(()=> import('components/Admin Panel/Reports/purchaseReport')))
-const SalesReport = Loadable(lazy(()=> import('components/Admin Panel/Reports/SalesReport')))
+const EmpAttendanceReport = Loadable(lazy(() => import('components/Admin Panel/Reports/EmployeeAttendance')));
+const PurchaseReport = Loadable(lazy(() => import('components/Admin Panel/Reports/purchaseReport')));
+const SalesReport = Loadable(lazy(() => import('components/Admin Panel/Sales/SalesIndex')));
 
 // Employee
 const EmpLeadsIndex = Loadable(lazy(() => import('components/Employee Panel/Employee Leads/EmpLeadsIndex')));
@@ -47,151 +54,190 @@ const SamplePage = Loadable(lazy(() => import('views/sample-page')));
 
 // ==============================|| MAIN ROUTING ||============================== //
 
-const MainRoutes = sessionStorage.getItem("adminLoggedIn") ? {
-  path: '/',
-  element: <MainLayout />,
-  children: [
-    {
+const MainRoutes = sessionStorage.getItem('adminLoggedIn')
+  ? {
       path: '/',
-      element: <AdminDashboard />
-    },
-    {
-      path: 'dashboard',
+      element: <MainLayout />,
       children: [
         {
-          path: 'admin',
+          path: '/',
           element: <AdminDashboard />
-        }
-      ]
-    },
-    {
-      path: 'empIndex',
-      element: <EmployeeIndex />
-    },
-    { 
-      path: 'empAttendancereports',
-      element: <EmpAttendanceReport />
-      },
-    {
-      path: 'leadsIndex',
-      element: <LeadsIndex />
-    },
-    {
-      path: 'AllLeads',
-      element: <AllLeads />
-    },
-    {
-      path:'NotAttendedcall',
-      element: <NotAttendedcallList/>
-    },    
-  
-    {
-      path: 'flwLeadsIndex',
-      element: <EmpFollowLeadsIndex />
-    },
-    {
-      path: 'purchIndex',
-      element: <PurchaseIndex />
-    },
-    {
-      path: 'proIndex',
-      element: <ProductIndex />
-    },
-    {
-      path: 'specIndex/:pro_id',
-      element: <SpecificationIndex />
-    },
-    {
-      path: 'salesIndex',
-      element: <SalesIndex />
-    },
-    {
-      path: 'stockIndex',
-      element: <StockManagement />
-    },
-    {
-      path: 'qrcode',
-      element: <QrCodeScanner />
-    },
-    {
-      path: 'custIndex',
-      element: <AdminCustomerIndex />
-    },
-    {
-      path:'purreports',
-      element:<PurchaseReport/>
-    },
-    {
-      path:'salesreports',
-      element:<SalesReport/>
-},
-    {
-      path: 'custPurchIndex',
-      element: <AdminCustPurchIndex />
-    },
-    {
-      path: 'utils',
-      children: [
-        {
-          path: 'util-typography',
-          element: <UtilsTypography />
         },
         {
-          path: 'util-color',
-          element: <UtilsColor />
+          path: 'dashboard',
+          children: [
+            {
+              path: 'admin',
+              element: <AdminDashboard />
+            }
+          ]
         },
         {
-          path: 'util-shadow',
-          element: <UtilsShadow />
-        }
-      ]
-    },
-    {
-      path:'uploadExcell',
-      element:<UploadExcel/>
-    },
-    {
-      path: 'sample-page',
-      element: <SamplePage />
-    }
-  ]
-} : (sessionStorage.getItem("employeeLoggedIn") ? {
-  path: '/',
-  element: <MainLayout />,
-  children: [
-    {
-      path: '/',
-      element: <EmpDashboard />
-    },
-    {
-      path: '/dashboard',
-      element: <EmpDashboard />
-    },
-    {
-      path: '/leadsIndex',
-      element: <EmpLeadsIndex/>
-    },
-    {
-      path: 'NotAttendedcall',
-      element: <EmpCallNotAttendedLeads/>
-    },
-    {
-      path: '/flwLeadsIndex',
-      element: <FollowingLeadsIndex/>
-    },
-    {
-      path: 'custIndex',
-      element: <CustomerIndex />
-    },
-    {
-      path: 'custPurchIndex',
-      element: <CustPurchIndex />
-    },
-  ]
-} : {
-  path: '/',
-  element: <Login />
-});
+          path: 'empIndex',
+          element: <EmployeeIndex />
+        },
+        {
+          path: 'empAttendancereports',
+          element: <EmpAttendanceReport />
+        },
+        {
+          path: 'empattendance',
+          element: <EmployeeAttendancePage />
+        },
+        {
+          path: 'leadsIndex',
+          element: <LeadsIndex />
+        },
+        {
+          path: 'AllLeads',
+          element: <AllLeads />
+        },
+        {
+          path: 'NotAttendedcall',
+          element: <NotAttendedcallList />
+        },
 
+        {
+          path: 'flwLeadsIndex',
+          element: <EmpFollowLeadsIndex />
+        },
+        {
+          path: 'purchIndex',
+          element: <PurchaseIndex />
+        },
+        {
+          path: 'proIndex',
+          element: <ProductIndex />
+        },
+        {
+          path: 'specIndex/:pro_id',
+          element: <SpecificationIndex />
+        },
+        {
+          path: 'salesIndex',
+          element: <SalesIndex />
+        },
+        {
+          path: 'stockIndex',
+          element: <StockManagement />
+        },
+        {
+          path: 'qrcode',
+          element: <QrCodeScanner />
+        },
+        {
+          path: 'custIndex',
+          element: <AdminCustomerIndex />
+        },
+        {
+          path: 'purreports',
+          element: <PurchaseReport />
+        },
+        {
+          path: 'salesreports',
+          element: <SalesReport />
+        },
+        {
+          path: 'custPurchIndex',
+          element: <AdminCustPurchIndex />
+        },
+        {
+          path: 'quotation/:follow_id',
+          element: <QuotationPage />
+        },
+        {
+          path: 'invoice/:follow_id',
+          element: <InvoicePage />
+        },
+        {
+          path: 'proforma/:follow_id',
+          element: <ProformaPage />
+        },
+        {
+          path: 'invoiceHistory',
+          element: <InvoiceHistoryAdmin />
+        },
+        {
+          path: 'utils',
+          children: [
+            {
+              path: 'util-typography',
+              element: <UtilsTypography />
+            },
+            {
+              path: 'util-color',
+              element: <UtilsColor />
+            },
+            {
+              path: 'util-shadow',
+              element: <UtilsShadow />
+            }
+          ]
+        },
+        {
+          path: 'uploadExcell',
+          element: <UploadExcel />
+        },
+        {
+          path: 'sample-page',
+          element: <SamplePage />
+        }
+      ]
+    }
+  : sessionStorage.getItem('employeeLoggedIn')
+    ? {
+        path: '/',
+        element: <MainLayout />,
+        children: [
+          {
+            path: '/',
+            element: <EmpDashboard />
+          },
+          {
+            path: '/dashboard',
+            element: <EmpDashboard />
+          },
+          {
+            path: '/leadsIndex',
+            element: <EmpLeadsIndex />
+          },
+          {
+            path: 'NotAttendedcall',
+            element: <EmpCallNotAttendedLeads />
+          },
+          {
+            path: '/flwLeadsIndex',
+            element: <FollowingLeadsIndex />
+          },
+          {
+            path: 'custIndex',
+            element: <CustomerIndex />
+          },
+          {
+            path: 'custPurchIndex',
+            element: <CustPurchIndex />
+          },
+          {
+            path: 'quotation/:follow_id',
+            element: <QuotationPage />
+          },
+          {
+            path: 'invoice/:follow_id',
+            element: <InvoicePage />
+          },
+          {
+            path: 'proforma/:follow_id',
+            element: <ProformaPage />
+          },
+          {
+            path: 'invoiceHistory',
+            element: <InvoiceHistory />
+          }
+        ]
+      }
+    : {
+        path: '/',
+        element: <Login />
+      };
 
 export default MainRoutes;

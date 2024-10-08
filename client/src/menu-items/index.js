@@ -26,11 +26,11 @@ const employeeLoggedIn = sessionStorage.getItem("employeeLoggedIn") === "true";
 // Assign menu items based on login status
 if (adminLoggedIn) {
   menuItems = {
-    items: [dashboard, admin_emp, admin_leads, admin_purch, admin_product, admin_sales, admin_cust,admin_Stock,admin_reports]
+    items: [dashboard, admin_emp, admin_leads, admin_purch, admin_product, admin_cust, admin_reports, admin_Stock,]
   };
 } else if (employeeLoggedIn) {
   menuItems = {
-    items: [emp_dashboard,emp_leads,emp_cust]
+    items: [emp_dashboard, emp_leads, emp_cust]
   };
 }
 
